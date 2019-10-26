@@ -1,0 +1,27 @@
+{
+  "name": "fantastic12-contracts",
+  "version": "0.0.1",
+  "description": "Ethereum smart contracts for Fantastic12",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx buidler test"
+  },
+  "keywords": [
+    "ethereum",
+    "dao",
+    "blockchain",
+    "bounty"
+  ],
+  "author": "Bacon Labs",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@nomiclabs/buidler": "^1.0.1",
+    "@nomiclabs/buidler-truffle5": "^1.0.1",
+    "@nomiclabs/buidler-web3": "^1.0.1",
+    "mocha": "^6.2.2",
+    "web3": "^1.2.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^2.3.0"
+  }
+}
