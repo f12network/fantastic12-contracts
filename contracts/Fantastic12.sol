@@ -112,6 +112,7 @@ contract Fantastic12 {
   function postBounty(
     string memory _dataIPFSHash,
     uint256 _deadline,
+    uint256 _reward,
     address[] memory _members,
     bytes[]   memory _signatures
   )
@@ -119,24 +120,78 @@ contract Fantastic12 {
     onlyMember
     withConsensus(
       this.postBounty.selector,
-      abi.encode(_dataIPFSHash, _deadline),
+      abi.encode(_dataIPFSHash, _deadline, _reward),
       _members,
       _signatures
     )
+    returns(uint256 _bountyID)
   {
     address payable[] memory issuers = new address payable[](1);
     issuers[0] = address(this);
     address[] memory approvers = new address[](1);
     approvers[0] = address(this);
 
-    uint256 bountyID = BOUNTIES.issueBounty(
+    // Approve DAI reward to bounties contract
+    require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
+    require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
+
+    _bountyID = BOUNTIES.issueAndContribute(
       address(this),
       issuers,
       approvers,
       _dataIPFSHash,
       _deadline,
       address(DAI),
-      20 // ERC20
+      20, // ERC20
+      _reward
+    );
+  }
+
+  function addBountyReward(
+    uint256 _bountyID,
+    uint256 _reward,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    onlyMember
+    withConsensus(
+      this.addBountyReward.selector,
+      abi.encode(_bountyID, _reward),
+      _members,
+      _signatures
+    )
+  {
+    // Approve DAI reward to bounties contract
+    require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
+    require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
+
+    BOUNTIES.contribute(
+      address(this),
+      _bountyID,
+      _reward
+    );
+  }
+
+  function refundBountyReward(
+    uint256 _bountyID,
+    uint256[] _contributionIDs,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    onlyMember
+    withConsensus(
+      this.refundBountyReward.selector,
+      abi.encode(_bountyID, _contributionIDs),
+      _members,
+      _signatures
+    )
+  {
+    BOUNTIES.refundMyContributions(
+      address(this),
+      _bountyID,
+      _contributionIDs
     );
   }
 
