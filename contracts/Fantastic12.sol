@@ -42,9 +42,12 @@ contract Fantastic12 {
   event Shout(string message);
 
   // Constructor
-  constructor() public {
-    memberCount = 0;
+  constructor(address _summoner) public {
+    memberCount = 1;
     nonce = 0;
+
+    // Add `_summoner` as the first member
+    isMember[_summoner] = true;
   }
 
   // Functions
@@ -70,11 +73,24 @@ contract Fantastic12 {
       _signatures
     )
   {
+    require(_newMember != address(0), "Member cannot be zero address");
+    require(!isMember[_newMember], "Member cannot be added twice");
 
+    // Receive tribute from `_newMember`
+    // TODO
+
+    // Add `_newMember` to squad
+    isMember[_newMember] = true;
+    memberCount += 1;
   }
 
   function rageQuit() public onlyMember {
+    // Give `msg.sender` their portion of the squad funds
+    // TODO
 
+    // Remove `msg.sender` from squad
+    isMember[msg.sender] = false;
+    memberCount -= 1;
   }
 
   /**
