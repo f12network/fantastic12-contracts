@@ -1,8 +1,9 @@
 pragma solidity 0.5.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./standard_bounties/StandardBounties.sol";
 
 contract Fantastic12 {
   using SafeMath for uint256;
@@ -15,6 +16,8 @@ contract Fantastic12 {
   mapping(address => bool) public isMember;
   uint8 public memberCount;
   uint256 public nonce; // How many function calls have happened. Used for signature security.
+  IERC20 public DAI;
+  StandardBounties public BOUNTIES;
 
   // Modifiers
   modifier onlyMember {
@@ -42,15 +45,22 @@ contract Fantastic12 {
   event Shout(string message);
 
   // Constructor
-  constructor(address _summoner) public {
+  constructor(
+    address _summoner,
+    address _DAI_ADDR,
+    address _BOUNTIES_ADDR
+  ) public {
     memberCount = 1;
     nonce = 0;
+    DAI = IERC20(_DAI_ADDR);
+    BOUNTIES = StandardBounties(_BOUNTIES_ADDR);
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
   }
 
   // Functions
+
   function shout(string memory _message) public onlyMember {
     emit Shout(_message);
   }
@@ -58,6 +68,7 @@ contract Fantastic12 {
   /**
     Member management
    */
+
   function addMember(
     address _newMember,
     uint256 _tribute,
@@ -77,7 +88,7 @@ contract Fantastic12 {
     require(!isMember[_newMember], "Member cannot be added twice");
 
     // Receive tribute from `_newMember`
-    // TODO
+    require(DAI.transferFrom(_newMember, address(this), _tribute), "Tribute transfer failed");
 
     // Add `_newMember` to squad
     isMember[_newMember] = true;
@@ -86,7 +97,8 @@ contract Fantastic12 {
 
   function rageQuit() public onlyMember {
     // Give `msg.sender` their portion of the squad funds
-    // TODO
+    uint256 withdrawAmount = DAI.balanceOf(address(this)).div(memberCount);
+    require(DAI.transfer(msg.sender, withdrawAmount), "Withdraw failed");
 
     // Remove `msg.sender` from squad
     isMember[msg.sender] = false;
@@ -96,6 +108,7 @@ contract Fantastic12 {
   /**
     Posting bounties
    */
+
   function postBounty(
     string memory _dataIPFSHash,
     uint256 _deadline,
@@ -111,12 +124,47 @@ contract Fantastic12 {
       _signatures
     )
   {
+    address payable[] memory issuers = new address payable[](1);
+    issuers[0] = address(this);
+    address[] memory approvers = new address[](1);
+    approvers[0] = address(this);
 
+    uint256 bountyID = BOUNTIES.issueBounty(
+      address(this),
+      issuers,
+      approvers,
+      _dataIPFSHash,
+      _deadline,
+      address(DAI),
+      20 // ERC20
+    );
   }
 
-  function updateBounty(
+  function changeBountyData(
     uint256 _bountyID,
     string memory _dataIPFSHash,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    onlyMember
+    withConsensus(
+      this.changeBountyData.selector,
+      abi.encode(_bountyID, _dataIPFSHash),
+      _members,
+      _signatures
+    )
+  {
+    BOUNTIES.changeData(
+      address(this),
+      _bountyID,
+      0, // issuerId
+      _dataIPFSHash
+    );
+  }
+
+  function changeBountyDeadline(
+    uint256 _bountyID,
     uint256 _deadline,
     address[] memory _members,
     bytes[]   memory _signatures
@@ -124,13 +172,18 @@ contract Fantastic12 {
     public
     onlyMember
     withConsensus(
-      this.updateBounty.selector,
-      abi.encode(_bountyID, _dataIPFSHash, _deadline),
+      this.changeBountyDeadline.selector,
+      abi.encode(_bountyID, _deadline),
       _members,
       _signatures
     )
   {
-
+    BOUNTIES.changeDeadline(
+      address(this),
+      _bountyID,
+      0, // issuerId
+      _deadline
+    );
   }
 
   function acceptBountySubmission(
@@ -149,12 +202,19 @@ contract Fantastic12 {
       _signatures
     )
   {
-
+    BOUNTIES.acceptFulfillment(
+      address(this),
+      _bountyID,
+      _fulfillmentID,
+      0, // approverId
+      _tokenAmounts
+    );
   }
 
   /**
     Working on bounties
    */
+
   function performBountyAction(
     uint256 _bountyID,
     string memory _dataIPFSHash,
@@ -170,7 +230,11 @@ contract Fantastic12 {
       _signatures
     )
   {
-
+    BOUNTIES.performAction(
+      address(this),
+      _bountyID,
+      _dataIPFSHash
+    );
   }
 
   function fulfillBounty(
@@ -188,7 +252,15 @@ contract Fantastic12 {
       _signatures
     )
   {
+    address payable[] memory fulfillers = new address payable[](1);
+    fulfillers[0] = address(this);
 
+    BOUNTIES.fulfillBounty(
+      address(this),
+      _bountyID,
+      fulfillers,
+      _dataIPFSHash
+    );
   }
 
   function updateBountyFulfillment(
@@ -207,8 +279,21 @@ contract Fantastic12 {
       _signatures
     )
   {
+    address payable[] memory fulfillers = new address payable[](1);
+    fulfillers[0] = address(this);
 
+    BOUNTIES.updateFulfillment(
+      address(this),
+      _bountyID,
+      _fulfillmentID,
+      fulfillers,
+      _dataIPFSHash
+    );
   }
+
+  /**
+    Consensus
+   */
 
   function naiveMessageHash(
     bytes4       _funcSelector,
@@ -248,5 +333,9 @@ contract Fantastic12 {
     nonce = nonce.add(1);
 
     return true;
+  }
+
+  function() external payable {
+    revert("Doesn't support receiving Ether");
   }
 }
