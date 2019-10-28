@@ -76,7 +76,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.addMember.selector,
       abi.encode(_newMember, _tribute),
@@ -117,7 +116,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.postBounty.selector,
       abi.encode(_dataIPFSHash, _deadline, _reward),
@@ -154,7 +152,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.addBountyReward.selector,
       abi.encode(_bountyID, _reward),
@@ -180,7 +177,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.refundBountyReward.selector,
       abi.encode(_bountyID, _contributionIDs),
@@ -202,7 +198,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.changeBountyData.selector,
       abi.encode(_bountyID, _dataIPFSHash),
@@ -225,7 +220,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.changeBountyDeadline.selector,
       abi.encode(_bountyID, _deadline),
@@ -249,7 +243,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.acceptBountySubmission.selector,
       abi.encode(_bountyID, _fulfillmentID, _tokenAmounts),
@@ -277,7 +270,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.performBountyAction.selector,
       abi.encode(_bountyID, _dataIPFSHash),
@@ -299,7 +291,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.fulfillBounty.selector,
       abi.encode(_bountyID, _dataIPFSHash),
@@ -326,7 +317,6 @@ contract Fantastic12 {
     bytes[]   memory _signatures
   )
     public
-    onlyMember
     withConsensus(
       this.updateBountyFulfillment.selector,
       abi.encode(_bountyID, _fulfillmentID, _dataIPFSHash),
