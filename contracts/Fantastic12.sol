@@ -18,6 +18,8 @@ contract Fantastic12 {
   uint256 public nonce; // How many function calls have happened. Used for signature security.
   IERC20 public DAI;
   StandardBounties public BOUNTIES;
+  address payable[] public issuersOrFulfillers;
+  address[] public approvers;
 
   // Modifiers
   modifier onlyMember {
@@ -43,6 +45,7 @@ contract Fantastic12 {
 
   // Events
   event Shout(string message);
+  event PostBounty(uint256 bountyID);
 
   // Constructor
   constructor(
@@ -54,6 +57,10 @@ contract Fantastic12 {
     nonce = 0;
     DAI = IERC20(_DAI_ADDR);
     BOUNTIES = StandardBounties(_BOUNTIES_ADDR);
+    issuersOrFulfillers = new address payable[](1);
+    issuersOrFulfillers[0] = address(this);
+    approvers = new address[](1);
+    approvers[0] = address(this);
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
@@ -123,20 +130,26 @@ contract Fantastic12 {
       _members,
       _signatures
     )
-    returns(uint256 _bountyID)
+    returns (uint256 _bountyID)
   {
-    address payable[] memory issuers = new address payable[](1);
-    issuers[0] = address(this);
-    address[] memory approvers = new address[](1);
-    approvers[0] = address(this);
+    return _postBounty(_dataIPFSHash, _deadline, _reward);
+  }
 
+  function _postBounty(
+    string memory _dataIPFSHash,
+    uint256 _deadline,
+    uint256 _reward
+  )
+    internal
+    returns (uint256 _bountyID)
+  {
     // Approve DAI reward to bounties contract
     require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
     require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
 
     _bountyID = BOUNTIES.issueAndContribute(
       address(this),
-      issuers,
+      issuersOrFulfillers,
       approvers,
       _dataIPFSHash,
       _deadline,
@@ -144,6 +157,7 @@ contract Fantastic12 {
       20, // ERC20
       _reward
     );
+    emit PostBounty(_bountyID);
   }
 
   function addBountyReward(
@@ -173,7 +187,7 @@ contract Fantastic12 {
 
   function refundBountyReward(
     uint256 _bountyID,
-    uint256[] _contributionIDs,
+    uint256[] memory _contributionIDs,
     address[] memory _members,
     bytes[]   memory _signatures
   )
@@ -299,13 +313,10 @@ contract Fantastic12 {
       _signatures
     )
   {
-    address payable[] memory fulfillers = new address payable[](1);
-    fulfillers[0] = address(this);
-
     BOUNTIES.fulfillBounty(
       address(this),
       _bountyID,
-      fulfillers,
+      issuersOrFulfillers,
       _dataIPFSHash
     );
   }
@@ -325,14 +336,11 @@ contract Fantastic12 {
       _signatures
     )
   {
-    address payable[] memory fulfillers = new address payable[](1);
-    fulfillers[0] = address(this);
-
     BOUNTIES.updateFulfillment(
       address(this),
       _bountyID,
       _fulfillmentID,
-      fulfillers,
+      issuersOrFulfillers,
       _dataIPFSHash
     );
   }
