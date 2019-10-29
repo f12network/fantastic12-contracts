@@ -34,8 +34,9 @@ contract("Fantastic12", accounts => {
   }
 
   let postBounty = async function(data, deadline, reward, approvers) {
-    let funcSig = web3.eth.abi.encodeFunctionSignature("postBounty(string,uint256,uint256,address[],bytes[])");
-    let funcParams = web3.eth.abi.encodeParameters(['string', 'uint256', 'uint256'], [data, deadline, reward]);
+    let paramTypes = ['string', 'uint256', 'uint256'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`postBounty(${paramTypes},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [data, deadline, reward]);
     let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
     let sigs = await Promise.all(approvers.map(async (approver) => {
       return await web3.eth.sign(msgHash, approver);
@@ -44,6 +45,23 @@ contract("Fantastic12", accounts => {
     return await squad0.postBounty(
       data,
       deadline,
+      reward,
+      approvers,
+      sigs
+    );
+  }
+
+  let addBountyReward = async function(bountyID, reward, approvers) {
+    let paramTypes = ['uint256', 'uint256'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`addBountyReward(${paramTypes},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, reward]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
+    let sigs = await Promise.all(approvers.map(async (approver) => {
+      return await web3.eth.sign(msgHash, approver);
+    }));
+
+    return await squad0.addBountyReward(
+      bountyID,
       reward,
       approvers,
       sigs
@@ -129,9 +147,28 @@ contract("Fantastic12", accounts => {
 
   it("addBountyReward()", async function() {
     // Transfer DAI to squad
+    let amount = `${10 * PRECISION}`;
+    await DAI.transfer(squad0.address, amount);
+    await DAI.transfer(squad0.address, amount);
+
     // Post a bounty with reward
+    let data = "TestData0";
+    let now = Math.floor(Date.now() / 1e3);
+    let deadline = now + 1000;
+    let result0 = await postBounty(
+      data,
+      deadline,
+      amount,
+      [summoner]
+    );
+    let bountyID = result0.logs[0].args.bountyID;
+
     // Add reward to bounty
+    await addBountyReward(+bountyID, amount, [summoner]);
+
     // Verify that reward has been added
+    let bountyInfo = await Bounties.getBounty(bountyID);
+    assert.equal(bountyInfo.balance, `${+amount * 2}`, "Reward mismatch");
   });
 
   it("refundBountyReward()", async function() {
