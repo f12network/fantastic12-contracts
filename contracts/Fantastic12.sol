@@ -45,7 +45,18 @@ contract Fantastic12 {
 
   // Events
   event Shout(string message);
-  event PostBounty(uint256 bountyID);
+  event Declare(string message);
+  event AddMember(address newMember, uint256 tribute);
+  event RageQuit(address quitter, uint256 fundsWithdrawn);
+  event PostBounty(uint256 bountyID, uint256 reward);
+  event AddBountyReward(uint256 bountyID, uint256 reward);
+  event RefundBountyReward(uint256 bountyID, uint256 refundAmount);
+  event ChangeBountyData(uint256 bountyID);
+  event ChangeBountyDeadline(uint256 bountyID);
+  event AcceptBountySubmission(uint256 bountyID, uint256 fulfillmentID);
+  event PerformBountyAction(uint256 bountyID);
+  event FulfillBounty(uint256 bountyID);
+  event UpdateBountyFulfillment(uint256 bountyID, uint256 fulfillmentID);
 
   // Constructor
   constructor(
@@ -68,8 +79,27 @@ contract Fantastic12 {
 
   // Functions
 
+  /**
+    Censorship-resistant messaging
+   */
   function shout(string memory _message) public onlyMember {
     emit Shout(_message);
+  }
+
+  function declare(
+    string memory _message,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    withConsensus(
+      this.declare.selector,
+      abi.encode(_message),
+      _members,
+      _signatures
+    )
+  {
+    emit Declare(_message);
   }
 
   /**
@@ -100,6 +130,8 @@ contract Fantastic12 {
     // Add `_newMember` to squad
     isMember[_newMember] = true;
     memberCount += 1;
+
+    emit AddMember(_newMember, _tribute);
   }
 
   function rageQuit() public onlyMember {
@@ -110,6 +142,7 @@ contract Fantastic12 {
     // Remove `msg.sender` from squad
     isMember[msg.sender] = false;
     memberCount -= 1;
+    emit RageQuit(msg.sender, withdrawAmount);
   }
 
   /**
@@ -170,7 +203,7 @@ contract Fantastic12 {
       );
     }
 
-    emit PostBounty(_bountyID);
+    emit PostBounty(_bountyID, _reward);
   }
 
   function addBountyReward(
@@ -196,6 +229,8 @@ contract Fantastic12 {
       _bountyID,
       _reward
     );
+
+    emit AddBountyReward(_bountyID, _reward);
   }
 
   function refundBountyReward(
@@ -212,11 +247,14 @@ contract Fantastic12 {
       _signatures
     )
   {
+    uint256 beforeBalance = DAI.balanceOf(address(this));
     BOUNTIES.refundMyContributions(
       address(this),
       _bountyID,
       _contributionIDs
     );
+
+    emit RefundBountyReward(_bountyID, DAI.balanceOf(address(this)).sub(beforeBalance));
   }
 
   function changeBountyData(
@@ -239,6 +277,7 @@ contract Fantastic12 {
       0, // issuerId
       _dataIPFSHash
     );
+    emit ChangeBountyData(_bountyID);
   }
 
   function changeBountyDeadline(
@@ -261,6 +300,7 @@ contract Fantastic12 {
       0, // issuerId
       _deadline
     );
+    emit ChangeBountyDeadline(_bountyID);
   }
 
   function acceptBountySubmission(
@@ -285,6 +325,7 @@ contract Fantastic12 {
       0, // approverId
       _tokenAmounts
     );
+    emit AcceptBountySubmission(_bountyID, _fulfillmentID);
   }
 
   /**
@@ -310,6 +351,7 @@ contract Fantastic12 {
       _bountyID,
       _dataIPFSHash
     );
+    emit PerformBountyAction(_bountyID);
   }
 
   function fulfillBounty(
@@ -332,6 +374,7 @@ contract Fantastic12 {
       issuersOrFulfillers,
       _dataIPFSHash
     );
+    emit FulfillBounty(_bountyID);
   }
 
   function updateBountyFulfillment(
@@ -356,6 +399,7 @@ contract Fantastic12 {
       issuersOrFulfillers,
       _dataIPFSHash
     );
+    emit UpdateBountyFulfillment(_bountyID, _fulfillmentID);
   }
 
   /**
