@@ -85,6 +85,7 @@ contract Fantastic12 {
   {
     require(_newMember != address(0), "Member cannot be zero address");
     require(!isMember[_newMember], "Member cannot be added twice");
+    require(memberCount < MAX_MEMBERS, "Max member count reached");
 
     // Receive tribute from `_newMember`
     require(DAI.transferFrom(_newMember, address(this), _tribute), "Tribute transfer failed");
