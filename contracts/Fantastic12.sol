@@ -143,20 +143,33 @@ contract Fantastic12 {
     internal
     returns (uint256 _bountyID)
   {
-    // Approve DAI reward to bounties contract
-    require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
-    require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
+    if (_reward > 0) {
+      // Approve DAI reward to bounties contract
+      require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
+      require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
 
-    _bountyID = BOUNTIES.issueAndContribute(
-      address(this),
-      issuersOrFulfillers,
-      approvers,
-      _dataIPFSHash,
-      _deadline,
-      address(DAI),
-      20, // ERC20
-      _reward
-    );
+      _bountyID = BOUNTIES.issueAndContribute(
+        address(this),
+        issuersOrFulfillers,
+        approvers,
+        _dataIPFSHash,
+        _deadline,
+        address(DAI),
+        20, // ERC20
+        _reward
+      );
+    } else {
+      _bountyID = BOUNTIES.issueBounty(
+        address(this),
+        issuersOrFulfillers,
+        approvers,
+        _dataIPFSHash,
+        _deadline,
+        address(DAI),
+        20 // ERC20
+      );
+    }
+
     emit PostBounty(_bountyID);
   }
 
