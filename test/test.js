@@ -68,6 +68,23 @@ contract("Fantastic12", accounts => {
     );
   }
 
+  let refundBountyReward = async function(bountyID, contributionIDs, approvers) {
+    let paramTypes = ['uint256', 'uint256[]'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`refundBountyReward(${paramTypes},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, contributionIDs]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
+    let sigs = await Promise.all(approvers.map(async (approver) => {
+      return await web3.eth.sign(msgHash, approver);
+    }));
+
+    return await squad0.refundBountyReward(
+      bountyID,
+      contributionIDs,
+      approvers,
+      sigs
+    );
+  }
+
   beforeEach(async function() {
     // Init contracts
     DAI = await MockERC20.new();
@@ -173,9 +190,27 @@ contract("Fantastic12", accounts => {
 
   it("refundBountyReward()", async function() {
     // Transfer DAI to squad
+    let amount = `${10 * PRECISION}`;
+    await DAI.transfer(squad0.address, amount);
+
     // Post a bounty with reward
+    let data = "TestData0";
+    let now = Math.floor(Date.now() / 1e3);
+    let deadline = now - 1000; // Deadline needs to be in the past to refund bounty reward
+    let result = await postBounty(
+      data,
+      deadline,
+      amount,
+      [summoner]
+    );
+    let bountyID = result.logs[0].args.bountyID;
+
     // Refund reward
+    await refundBountyReward(+bountyID, [0], [summoner]);
+
     // Verify the reward has been refunded
+    let bountyInfo = await Bounties.getBounty(bountyID);
+    assert.equal(bountyInfo.balance, 0, "Refund mismatch");
   });
 
   it("changeBountyData()", async function() {
