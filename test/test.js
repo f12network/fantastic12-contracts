@@ -189,6 +189,22 @@ contract("Fantastic12", accounts => {
     );
   };
 
+  let declare = async function (message, approvers) {
+    let paramTypes = ['string'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`declare(${paramTypes},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [message]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
+    let sigs = await Promise.all(approvers.map(async (approver) => {
+      return await web3.eth.sign(msgHash, approver);
+    }));
+
+    return await squad0.declare(
+      message,
+      approvers,
+      sigs
+    );
+  };
+
   beforeEach(async function () {
     // Init contracts
     DAI = await MockERC20.new();
@@ -490,5 +506,19 @@ contract("Fantastic12", accounts => {
     let newData = "TestData2";
     let fulfillmentID = 0;
     await updateBountyFulfillment(bountyID, fulfillmentID, newData, [summoner]);
+  });
+
+  it("shout()", async function() {
+    let msg = "Hello world!";
+    let result = await squad0.shout(msg);
+    let shoutMsg = result.logs[0].args.message;
+    assert.equal(shoutMsg, msg, "Message mismatch");
+  });
+
+  it("declare()", async function() {
+    let msg = "Hello world!";
+    let result = await declare(msg, [summoner]);
+    let declareMsg = result.logs[0].args.message;
+    assert.equal(declareMsg, msg, "Message mismatch");
   });
 });
