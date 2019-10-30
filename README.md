@@ -1,5 +1,7 @@
 # Fantastic12
 
+[![Build Status](https://travis-ci.com/ZeframLou/fantastic12-contracts.svg?token=6MfxA2qceCpqfhy9xHjh&branch=master)](https://travis-ci.com/ZeframLou/fantastic12-contracts)
+
 Minimum Viable Startup on the Ethereum blockchain.
 
 Fantastic12 is the first step towards building [DAOmesh](https://docs.google.com/document/d/1br9NRMa8YuxVciiKOy66XnenVG2hNv5zNrQtakmuulk/edit?usp=sharing), the Web for a collaborative economy.
