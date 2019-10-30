@@ -8,11 +8,9 @@ async function main() {
   // For example, we make sure everything is compiled by running "compile"
   await env.run("compile");
 
-  // We require the artifacts once our contracts are compiled
-  const Greeter = env.artifacts.require("Greeter");
-  const greeter = await Greeter.new("Hello, world!");
-
-  console.log("Greeter address:", greeter.address);
+  const Fantastic12Factory = env.artifacts.require("Fantastic12Factory");
+  const squad = await Fantastic12Factory.new();
+  console.log(`Deployed Fantastic12Factory at address ${squad.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
