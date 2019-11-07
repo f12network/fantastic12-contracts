@@ -8,4 +8,5 @@ install:
   - npm install --only=dev
 
 script:
+  - npx buidler compile --config buidler.config.4.js
   - npx buidler test

@@ -3,10 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./standard_bounties/StandardBounties.sol";
+import "./standard_bounties/StandardBountiesWrapper.sol";
 
 contract Fantastic12 {
   using SafeMath for uint256;
+  using StandardBountiesWrapper for address;
 
   // Constants
   uint8 public constant MAX_MEMBERS = 12;
@@ -17,7 +18,6 @@ contract Fantastic12 {
   uint8 public memberCount;
   uint256 public nonce; // How many function calls have happened. Used for signature security.
   IERC20 public DAI;
-  StandardBounties public BOUNTIES;
   address payable[] public issuersOrFulfillers;
   address[] public approvers;
 
@@ -61,13 +61,11 @@ contract Fantastic12 {
   // Constructor
   constructor(
     address _summoner,
-    address _DAI_ADDR,
-    address _BOUNTIES_ADDR
+    address _DAI_ADDR
   ) public {
     memberCount = 1;
     nonce = 0;
     DAI = IERC20(_DAI_ADDR);
-    BOUNTIES = StandardBounties(_BOUNTIES_ADDR);
     issuersOrFulfillers = new address payable[](1);
     issuersOrFulfillers[0] = address(this);
     approvers = new address[](1);
@@ -153,55 +151,49 @@ contract Fantastic12 {
     string memory _dataIPFSHash,
     uint256 _deadline,
     uint256 _reward,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.postBounty.selector,
-      abi.encode(_dataIPFSHash, _deadline, _reward),
+      abi.encode(_dataIPFSHash, _deadline, _reward, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
     returns (uint256 _bountyID)
   {
-    return _postBounty(_dataIPFSHash, _deadline, _reward);
+    return _postBounty(_dataIPFSHash, _deadline, _reward, _standardBounties, _standardBountiesVersion);
   }
 
   function _postBounty(
     string memory _dataIPFSHash,
     uint256 _deadline,
-    uint256 _reward
+    uint256 _reward,
+    address _standardBounties,
+    uint256 _standardBountiesVersion
   )
     internal
     returns (uint256 _bountyID)
   {
-    if (_reward > 0) {
-      // Approve DAI reward to bounties contract
-      require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
-      require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
+    require(_reward > 0, "Reward can't be 0");
 
-      _bountyID = BOUNTIES.issueAndContribute(
-        address(this),
-        issuersOrFulfillers,
-        approvers,
-        _dataIPFSHash,
-        _deadline,
-        address(DAI),
-        20, // ERC20
-        _reward
-      );
-    } else {
-      _bountyID = BOUNTIES.issueBounty(
-        address(this),
-        issuersOrFulfillers,
-        approvers,
-        _dataIPFSHash,
-        _deadline,
-        address(DAI),
-        20 // ERC20
-      );
-    }
+    // Approve DAI reward to bounties contract
+    require(DAI.approve(_standardBounties, 0), "Failed to clear DAI approval");
+    require(DAI.approve(_standardBounties, _reward), "Failed to approve bounty reward");
+
+    _bountyID = _standardBounties.issueAndContribute(
+      _standardBountiesVersion,
+      address(this),
+      issuersOrFulfillers,
+      approvers,
+      _dataIPFSHash,
+      _deadline,
+      address(DAI),
+      _reward
+    );
 
     emit PostBounty(_bountyID, _reward);
   }
@@ -209,22 +201,25 @@ contract Fantastic12 {
   function addBountyReward(
     uint256 _bountyID,
     uint256 _reward,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.addBountyReward.selector,
-      abi.encode(_bountyID, _reward),
+      abi.encode(_bountyID, _reward, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
     // Approve DAI reward to bounties contract
-    require(DAI.approve(address(BOUNTIES), 0), "Failed to clear DAI approval");
-    require(DAI.approve(address(BOUNTIES), _reward), "Failed to approve bounty reward");
+    require(DAI.approve(_standardBounties, 0), "Failed to clear DAI approval");
+    require(DAI.approve(_standardBounties, _reward), "Failed to approve bounty reward");
 
-    BOUNTIES.contribute(
+    _standardBounties.contribute(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       _reward
@@ -236,19 +231,22 @@ contract Fantastic12 {
   function refundBountyReward(
     uint256 _bountyID,
     uint256[] memory _contributionIDs,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.refundBountyReward.selector,
-      abi.encode(_bountyID, _contributionIDs),
+      abi.encode(_bountyID, _contributionIDs, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
     uint256 beforeBalance = DAI.balanceOf(address(this));
-    BOUNTIES.refundMyContributions(
+    _standardBounties.refundMyContributions(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       _contributionIDs
@@ -260,21 +258,23 @@ contract Fantastic12 {
   function changeBountyData(
     uint256 _bountyID,
     string memory _dataIPFSHash,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.changeBountyData.selector,
-      abi.encode(_bountyID, _dataIPFSHash),
+      abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.changeData(
+    _standardBounties.changeData(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
-      0, // issuerId
       _dataIPFSHash
     );
     emit ChangeBountyData(_bountyID);
@@ -283,21 +283,23 @@ contract Fantastic12 {
   function changeBountyDeadline(
     uint256 _bountyID,
     uint256 _deadline,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.changeBountyDeadline.selector,
-      abi.encode(_bountyID, _deadline),
+      abi.encode(_bountyID, _deadline, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.changeDeadline(
+    _standardBounties.changeDeadline(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
-      0, // issuerId
       _deadline
     );
     emit ChangeBountyDeadline(_bountyID);
@@ -307,22 +309,24 @@ contract Fantastic12 {
     uint256 _bountyID,
     uint256 _fulfillmentID,
     uint256[] memory _tokenAmounts,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.acceptBountySubmission.selector,
-      abi.encode(_bountyID, _fulfillmentID, _tokenAmounts),
+      abi.encode(_bountyID, _fulfillmentID, _tokenAmounts, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.acceptFulfillment(
+    _standardBounties.acceptFulfillment(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       _fulfillmentID,
-      0, // approverId
       _tokenAmounts
     );
     emit AcceptBountySubmission(_bountyID, _fulfillmentID);
@@ -335,18 +339,21 @@ contract Fantastic12 {
   function performBountyAction(
     uint256 _bountyID,
     string memory _dataIPFSHash,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.performBountyAction.selector,
-      abi.encode(_bountyID, _dataIPFSHash),
+      abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.performAction(
+    _standardBounties.performAction(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       _dataIPFSHash
@@ -357,18 +364,21 @@ contract Fantastic12 {
   function fulfillBounty(
     uint256 _bountyID,
     string memory _dataIPFSHash,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.fulfillBounty.selector,
-      abi.encode(_bountyID, _dataIPFSHash),
+      abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.fulfillBounty(
+    _standardBounties.fulfillBounty(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       issuersOrFulfillers,
@@ -381,18 +391,21 @@ contract Fantastic12 {
     uint256 _bountyID,
     uint256 _fulfillmentID,
     string memory _dataIPFSHash,
+    address _standardBounties,
+    uint256 _standardBountiesVersion,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
       this.updateBountyFulfillment.selector,
-      abi.encode(_bountyID, _fulfillmentID, _dataIPFSHash),
+      abi.encode(_bountyID, _fulfillmentID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
       _signatures
     )
   {
-    BOUNTIES.updateFulfillment(
+    _standardBounties.updateFulfillment(
+      _standardBountiesVersion,
       address(this),
       _bountyID,
       _fulfillmentID,

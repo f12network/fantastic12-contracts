@@ -7,5 +7,8 @@ module.exports = {
       enabled: true,
       runs: 200
     }
+  },
+  paths: {
+    sources: "./contracts/5",
   }
 };
