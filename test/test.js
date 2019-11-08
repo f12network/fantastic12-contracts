@@ -15,21 +15,42 @@ contract("Fantastic12", accounts => {
   let BountiesV1;
   let squad0;
 
-  let addMember = async function (newMember, tribute, approvers) {
+  let addMembers = async function (newMembers, tributes, approvers) {
     // Approve tribute for newMember
-    await DAI.approve(squad0.address, tribute, { from: newMember });
+    for (let i in newMembers) {
+      let newMember = newMembers[i];
+      let tribute = tributes[i];
+      await DAI.approve(squad0.address, tribute, { from: newMember });
+    }
 
-    // Add newMember to squad0
-    let addMemberFuncSig = web3.eth.abi.encodeFunctionSignature("addMember(address,uint256,address[],bytes[])");
-    let addMemberFuncParams = web3.eth.abi.encodeParameters(['address', 'uint256'], [newMember, tribute]);
-    let addMemberMsgHash = await squad0.naiveMessageHash(addMemberFuncSig, addMemberFuncParams);
+    let paramTypes = ['address[]', 'uint256[]'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`addMembers(${paramTypes.join()},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [newMembers, tributes]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
     let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(addMemberMsgHash, approver);
+      return await web3.eth.sign(msgHash, approver);
     }));
 
-    return await squad0.addMember(
-      newMember,
-      tribute,
+    return await squad0.addMembers(
+      newMembers,
+      tributes,
+      approvers,
+      sigs
+    );
+  };
+
+  let transferDAI = async function (dests, amounts, approvers) {
+    let paramTypes = ['address[]', 'uint256[]'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`transferDAI(${paramTypes.join()},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [dests, amounts]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
+    let sigs = await Promise.all(approvers.map(async (approver) => {
+      return await web3.eth.sign(msgHash, approver);
+    }));
+
+    return await squad0.transferDAI(
+      dests,
+      amounts,
       approvers,
       sigs
     );
@@ -239,10 +260,24 @@ contract("Fantastic12", accounts => {
     await DAI.mint(hero2, mintAmount);
   });
 
-  it("addMember()", async function () {
+  it("shout()", async function() {
+    let msg = "Hello world!";
+    let result = await squad0.shout(msg);
+    let shoutMsg = result.logs[0].args.message;
+    assert.equal(shoutMsg, msg, "Message mismatch");
+  });
+
+  it("declare()", async function() {
+    let msg = "Hello world!";
+    let result = await declare(msg, [summoner]);
+    let declareMsg = result.logs[0].args.message;
+    assert.equal(declareMsg, msg, "Message mismatch");
+  });
+
+  it("addMembers()", async function () {
     // Add hero1
     let tribute1 = `${10 * PRECISION}`;
-    await addMember(hero1, tribute1, [summoner]);
+    await addMembers([hero1], [tribute1], [summoner]);
 
     // Verify hero1 has been added
     assert(await squad0.isMember(hero1), "Didn't add hero1 to isMember");
@@ -252,7 +287,7 @@ contract("Fantastic12", accounts => {
     assert.equal(await DAI.balanceOf(squad0.address), tribute1, "Didn't transfer hero1's tribute");
 
     // Add hero2 to squad0
-    await addMember(hero2, 0, [summoner, hero1]);
+    await addMembers([hero2], [0], [summoner, hero1]);
 
     // Verify hero2 has been added
     assert(await squad0.isMember(hero2), "Didn't add hero2 to isMember");
@@ -263,7 +298,7 @@ contract("Fantastic12", accounts => {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
     let tribute1Str = `${tribute1}`;
-    await addMember(hero1, tribute1Str, [summoner]);
+    await addMembers([hero1], [tribute1Str], [summoner]);
 
     // hero1 ragequits
     await squad0.rageQuit({ from: hero1 });
@@ -274,6 +309,25 @@ contract("Fantastic12", accounts => {
 
     // Verify hero1 received half of squad funds
     assert.equal(await DAI.balanceOf(squad0.address), tribute1 / 2, "Didn't withdraw funds to hero1");
+  });
+
+  it("transferDAI()", async function () {
+    // Transfer DAI from summoner to squad
+    let amount = 10 * PRECISION;
+    let amountStr = `${amount}`;
+    await DAI.transfer(squad0.address, amountStr);
+
+    // Transfer DAI from squad to hero1 and hero2
+    let hero1Amount = `${3 * PRECISION}`;
+    let hero2Amount = `${4 * PRECISION}`;
+    await transferDAI([hero1, hero2], [hero1Amount, hero2Amount], [summoner]);
+
+    // Verify hero1 and hero2 received correct funds
+    let initialBalance = 100 * PRECISION;
+    let actualHero1Amount = +(await DAI.balanceOf(hero1)) - initialBalance;
+    let actualHero2Amount = +(await DAI.balanceOf(hero2)) - initialBalance;
+    assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
+    assert.equal(hero2Amount, actualHero2Amount, "hero2 received amount mismatch");
   });
 
   it("postBounty() V1", async function () {
@@ -806,19 +860,5 @@ contract("Fantastic12", accounts => {
     let newData = "TestData2";
     let fulfillmentID = 0;
     await updateBountyFulfillment(bountyID, fulfillmentID, newData, Bounties.address, version, [summoner]);
-  });
-
-  it("shout()", async function() {
-    let msg = "Hello world!";
-    let result = await squad0.shout(msg);
-    let shoutMsg = result.logs[0].args.message;
-    assert.equal(shoutMsg, msg, "Message mismatch");
-  });
-
-  it("declare()", async function() {
-    let msg = "Hello world!";
-    let result = await declare(msg, [summoner]);
-    let declareMsg = result.logs[0].args.message;
-    assert.equal(declareMsg, msg, "Message mismatch");
   });
 });

@@ -104,19 +104,31 @@ contract Fantastic12 {
     Member management
    */
 
-  function addMember(
-    address _newMember,
-    uint256 _tribute,
+  function addMembers(
+    address[] memory _newMembers,
+    uint256[] memory _tributes,
     address[] memory _members,
     bytes[]   memory _signatures
   )
     public
     withConsensus(
-      this.addMember.selector,
-      abi.encode(_newMember, _tribute),
+      this.addMembers.selector,
+      abi.encode(_newMembers, _tributes),
       _members,
       _signatures
     )
+  {
+    require(_newMembers.length == _tributes.length, "_newMembers not same length as _tributes");
+    for (uint256 i = 0; i < _newMembers.length; i = i.add(1)) {
+      _addMember(_newMembers[i], _tributes[i]);
+    }
+  }
+
+  function _addMember(
+    address _newMember,
+    uint256 _tribute
+  )
+    internal
   {
     require(_newMember != address(0), "Member cannot be zero address");
     require(!isMember[_newMember], "Member cannot be added twice");
@@ -141,6 +153,30 @@ contract Fantastic12 {
     isMember[msg.sender] = false;
     memberCount -= 1;
     emit RageQuit(msg.sender, withdrawAmount);
+  }
+
+  /**
+    Fund management
+   */
+
+  function transferDAI(
+    address[] memory _dests,
+    uint256[] memory _amounts,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    withConsensus(
+      this.transferDAI.selector,
+      abi.encode(_dests, _amounts),
+      _members,
+      _signatures
+    )
+  {
+    require(_dests.length == _amounts.length, "_dests not same length as _amounts");
+    for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
+      require(DAI.transfer(_dests[i], _amounts[i]), "Failed DAI transfer");
+    }
   }
 
   /**
