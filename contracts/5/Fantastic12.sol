@@ -156,6 +156,30 @@ contract Fantastic12 {
   }
 
   /**
+    Fund management
+   */
+
+  function transferDAI(
+    address[] memory _dests,
+    uint256[] memory _amounts,
+    address[] memory _members,
+    bytes[]   memory _signatures
+  )
+    public
+    withConsensus(
+      this.transferDAI.selector,
+      abi.encode(_dests, _amounts),
+      _members,
+      _signatures
+    )
+  {
+    require(_dests.length == _amounts.length, "_dests not same length as _amounts");
+    for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
+      require(DAI.transfer(_dests[i], _amounts[i]), "Failed DAI transfer");
+    }
+  }
+
+  /**
     Posting bounties
    */
 

@@ -39,6 +39,23 @@ contract("Fantastic12", accounts => {
     );
   };
 
+  let transferDAI = async function (dests, amounts, approvers) {
+    let paramTypes = ['address[]', 'uint256[]'];
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`transferDAI(${paramTypes.join()},address[],bytes[])`);
+    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [dests, amounts]);
+    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
+    let sigs = await Promise.all(approvers.map(async (approver) => {
+      return await web3.eth.sign(msgHash, approver);
+    }));
+
+    return await squad0.transferDAI(
+      dests,
+      amounts,
+      approvers,
+      sigs
+    );
+  };
+
   let postBounty = async function (data, deadline, reward, bounties, version, approvers) {
     let paramTypes = ['string', 'uint256', 'uint256', 'address', 'uint256'];
     let funcSig = web3.eth.abi.encodeFunctionSignature(`postBounty(${paramTypes.join()},address[],bytes[])`);
@@ -243,6 +260,20 @@ contract("Fantastic12", accounts => {
     await DAI.mint(hero2, mintAmount);
   });
 
+  it("shout()", async function() {
+    let msg = "Hello world!";
+    let result = await squad0.shout(msg);
+    let shoutMsg = result.logs[0].args.message;
+    assert.equal(shoutMsg, msg, "Message mismatch");
+  });
+
+  it("declare()", async function() {
+    let msg = "Hello world!";
+    let result = await declare(msg, [summoner]);
+    let declareMsg = result.logs[0].args.message;
+    assert.equal(declareMsg, msg, "Message mismatch");
+  });
+
   it("addMembers()", async function () {
     // Add hero1
     let tribute1 = `${10 * PRECISION}`;
@@ -278,6 +309,25 @@ contract("Fantastic12", accounts => {
 
     // Verify hero1 received half of squad funds
     assert.equal(await DAI.balanceOf(squad0.address), tribute1 / 2, "Didn't withdraw funds to hero1");
+  });
+
+  it("transferDAI()", async function () {
+    // Transfer DAI from summoner to squad
+    let amount = 10 * PRECISION;
+    let amountStr = `${amount}`;
+    await DAI.transfer(squad0.address, amountStr);
+
+    // Transfer DAI from squad to hero1 and hero2
+    let hero1Amount = `${3 * PRECISION}`;
+    let hero2Amount = `${4 * PRECISION}`;
+    await transferDAI([hero1, hero2], [hero1Amount, hero2Amount], [summoner]);
+
+    // Verify hero1 and hero2 received correct funds
+    let initialBalance = 100 * PRECISION;
+    let actualHero1Amount = +(await DAI.balanceOf(hero1)) - initialBalance;
+    let actualHero2Amount = +(await DAI.balanceOf(hero2)) - initialBalance;
+    assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
+    assert.equal(hero2Amount, actualHero2Amount, "hero2 received amount mismatch");
   });
 
   it("postBounty() V1", async function () {
@@ -810,19 +860,5 @@ contract("Fantastic12", accounts => {
     let newData = "TestData2";
     let fulfillmentID = 0;
     await updateBountyFulfillment(bountyID, fulfillmentID, newData, Bounties.address, version, [summoner]);
-  });
-
-  it("shout()", async function() {
-    let msg = "Hello world!";
-    let result = await squad0.shout(msg);
-    let shoutMsg = result.logs[0].args.message;
-    assert.equal(shoutMsg, msg, "Message mismatch");
-  });
-
-  it("declare()", async function() {
-    let msg = "Hello world!";
-    let result = await declare(msg, [summoner]);
-    let declareMsg = result.logs[0].args.message;
-    assert.equal(declareMsg, msg, "Message mismatch");
   });
 });
