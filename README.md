@@ -17,7 +17,7 @@ Alternatively, if the squad is working on their own project, they could post bou
 ## Details!
 
 - **Lightning-speed decision making**: Squads use consensus voting to make group decisions, meaning if 75% or more of the members approve of an action then it can be carried out immediately.
-- **Cheap signature-based voting**: Voting is done by members signing on the details of an action using their Ethereum private keys, and an action can be carrie out if and only if it is accompanied by the signatures of sufficiently many members. This means only a single Ethereum transaction is needed for each action, which lowers the cost of voting, and allows for meta-txs.
+- **Cheap signature-based voting**: Voting is done by members signing on the details of an action using their Ethereum private keys, and an action can be carried out if and only if it is accompanied by the signatures of sufficiently many members. This means only a single Ethereum transaction is needed for each action, which lowers the cost of voting, and allows for meta-txs.
 - **Dai Stablecoin accounting**: Dai Stablecoin is used for all financial transactions of a squad, and all funds of a squad are stored in Dai.
 - **Rage-quitting**: Any member of a squad could quit at any time, and take their share of the funds with them.
 - **Unit tests!!!**: Go to `test/test.js`, and feast your eyes upon my 100% test coverage!
