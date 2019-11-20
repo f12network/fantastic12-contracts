@@ -5,7 +5,7 @@ import "./Fantastic12.sol";
 contract Fantastic12Factory {
   address public constant DAI_ADDR = 0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359;
 
-  event CreateSquad(address squad);
+  event CreateSquad(address indexed summoner, address squad);
 
   function createSquad(address _summoner)
     public
@@ -15,6 +15,6 @@ contract Fantastic12Factory {
       _summoner,
       DAI_ADDR
     );
-    emit CreateSquad(address(_squad));
+    emit CreateSquad(_summoner, address(_squad));
   }
 }
