@@ -15,7 +15,23 @@ contract("Fantastic12", accounts => {
   let BountiesV1;
   let squad0;
 
-  let addMembers = async function (newMembers, tributes, approvers) {
+  let approveAndSubmit = async function (func, argTypes, args, approvers, salts) {
+    let funcSig = web3.eth.abi.encodeFunctionSignature(`${func}(${argTypes.join()},address[],bytes[],uint256[])`);
+    let funcParams = web3.eth.abi.encodeParameters(argTypes, args);
+    let msgHashes = await Promise.all(approvers.map(async (_, i) => {
+      return await squad0.naiveMessageHash(funcSig, funcParams, salts[i]);
+    }))
+    let sigs = await Promise.all(approvers.map(async (approver, i) => {
+      return await web3.eth.sign(msgHashes[i], approver);
+    }));
+
+    args.push(approvers);
+    args.push(sigs);
+    args.push(salts);
+    return await squad0[func].apply(null, args);
+  }
+
+  let addMembers = async function (newMembers, tributes, approvers, salts) {
     // Approve tribute for newMember
     for (let i in newMembers) {
       let newMember = newMembers[i];
@@ -23,227 +39,87 @@ contract("Fantastic12", accounts => {
       await DAI.approve(squad0.address, tribute, { from: newMember });
     }
 
-    let paramTypes = ['address[]', 'uint256[]'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`addMembers(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [newMembers, tributes]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.addMembers(
-      newMembers,
-      tributes,
-      approvers,
-      sigs
-    );
+    let func = 'addMembers';
+    let argTypes = ['address[]', 'uint256[]'];
+    let args = [newMembers, tributes];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let transferDAI = async function (dests, amounts, approvers) {
-    let paramTypes = ['address[]', 'uint256[]'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`transferDAI(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [dests, amounts]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.transferDAI(
-      dests,
-      amounts,
-      approvers,
-      sigs
-    );
+  let transferDAI = async function (dests, amounts, approvers, salts) {
+    let func = 'transferDAI';
+    let argTypes = ['address[]', 'uint256[]'];
+    let args = [dests, amounts];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let postBounty = async function (data, deadline, reward, bounties, version, approvers) {
-    let paramTypes = ['string', 'uint256', 'uint256', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`postBounty(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [data, deadline, reward, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.postBounty(
-      data,
-      deadline,
-      reward,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let postBounty = async function (data, deadline, reward, bounties, version, approvers, salts) {
+    let func = 'postBounty';
+    let argTypes = ['string', 'uint256', 'uint256', 'address', 'uint256'];
+    let args = [data, deadline, reward, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let addBountyReward = async function (bountyID, reward, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'uint256', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`addBountyReward(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, reward, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.addBountyReward(
-      bountyID,
-      reward,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let addBountyReward = async function (bountyID, reward, bounties, version, approvers, salts) {
+    let func = 'addBountyReward';
+    let argTypes = ['uint256', 'uint256', 'address', 'uint256'];
+    let args = [bountyID, reward, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let refundBountyReward = async function (bountyID, contributionIDs, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'uint256[]', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`refundBountyReward(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, contributionIDs, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.refundBountyReward(
-      bountyID,
-      contributionIDs,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let refundBountyReward = async function (bountyID, contributionIDs, bounties, version, approvers, salts) {
+    let func = 'refundBountyReward';
+    let argTypes = ['uint256', 'uint256[]', 'address', 'uint256'];
+    let args = [bountyID, contributionIDs, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let changeBountyData = async function (bountyID, data, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'string', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`changeBountyData(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, data, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.changeBountyData(
-      bountyID,
-      data,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let changeBountyData = async function (bountyID, data, bounties, version, approvers, salts) {
+    let func = 'changeBountyData';
+    let argTypes = ['uint256', 'string', 'address', 'uint256'];
+    let args = [bountyID, data, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let changeBountyDeadline = async function (bountyID, deadline, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'uint256', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`changeBountyDeadline(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, deadline, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.changeBountyDeadline(
-      bountyID,
-      deadline,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let changeBountyDeadline = async function (bountyID, deadline, bounties, version, approvers, salts) {
+    let func = 'changeBountyDeadline';
+    let argTypes = ['uint256', 'uint256', 'address', 'uint256'];
+    let args = [bountyID, deadline, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let acceptBountySubmission = async function (bountyID, fulfillmentID, tokenAmounts, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'uint256', 'uint256[]', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`acceptBountySubmission(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, fulfillmentID, tokenAmounts, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.acceptBountySubmission(
-      bountyID,
-      fulfillmentID,
-      tokenAmounts,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let acceptBountySubmission = async function (bountyID, fulfillmentID, tokenAmounts, bounties, version, approvers, salts) {
+    let func = 'acceptBountySubmission';
+    let argTypes = ['uint256', 'uint256', 'uint256[]', 'address', 'uint256'];
+    let args = [bountyID, fulfillmentID, tokenAmounts, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let performBountyAction = async function (bountyID, data, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'string', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`performBountyAction(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, data, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.performBountyAction(
-      bountyID,
-      data,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let performBountyAction = async function (bountyID, data, bounties, version, approvers, salts) {
+    let func = 'performBountyAction';
+    let argTypes = ['uint256', 'string', 'address', 'uint256'];
+    let args = [bountyID, data, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let fulfillBounty = async function (bountyID, data, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'string', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`fulfillBounty(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, data, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.fulfillBounty(
-      bountyID,
-      data,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let fulfillBounty = async function (bountyID, data, bounties, version, approvers, salts) {
+    let func = 'fulfillBounty';
+    let argTypes = ['uint256', 'string', 'address', 'uint256'];
+    let args = [bountyID, data, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let updateBountyFulfillment = async function (bountyID, fulfullmentID, data, bounties, version, approvers) {
-    let paramTypes = ['uint256', 'uint256', 'string', 'address', 'uint256'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`updateBountyFulfillment(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [bountyID, fulfullmentID, data, bounties, version]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.updateBountyFulfillment(
-      bountyID,
-      fulfullmentID,
-      data,
-      bounties,
-      version,
-      approvers,
-      sigs
-    );
+  let updateBountyFulfillment = async function (bountyID, fulfullmentID, data, bounties, version, approvers, salts) {
+    let func = 'updateBountyFulfillment';
+    let argTypes = ['uint256', 'uint256', 'string', 'address', 'uint256'];
+    let args = [bountyID, fulfullmentID, data, bounties, version];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
-  let declare = async function (message, approvers) {
-    let paramTypes = ['string'];
-    let funcSig = web3.eth.abi.encodeFunctionSignature(`declare(${paramTypes.join()},address[],bytes[])`);
-    let funcParams = web3.eth.abi.encodeParameters(paramTypes, [message]);
-    let msgHash = await squad0.naiveMessageHash(funcSig, funcParams);
-    let sigs = await Promise.all(approvers.map(async (approver) => {
-      return await web3.eth.sign(msgHash, approver);
-    }));
-
-    return await squad0.declare(
-      message,
-      approvers,
-      sigs
-    );
+  let declare = async function (message, approvers, salts) {
+    let func = 'declare';
+    let argTypes = ['string'];
+    let args = [message];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
   beforeEach(async function () {
@@ -269,7 +145,7 @@ contract("Fantastic12", accounts => {
 
   it("declare()", async function() {
     let msg = "Hello world!";
-    let result = await declare(msg, [summoner]);
+    let result = await declare(msg, [summoner], [0]);
     let declareMsg = result.logs[0].args.message;
     assert.equal(declareMsg, msg, "Message mismatch");
   });
@@ -277,7 +153,7 @@ contract("Fantastic12", accounts => {
   it("addMembers()", async function () {
     // Add hero1
     let tribute1 = `${10 * PRECISION}`;
-    await addMembers([hero1], [tribute1], [summoner]);
+    await addMembers([hero1], [tribute1], [summoner], [1]);
 
     // Verify hero1 has been added
     assert(await squad0.isMember(hero1), "Didn't add hero1 to isMember");
@@ -287,7 +163,7 @@ contract("Fantastic12", accounts => {
     assert.equal(await DAI.balanceOf(squad0.address), tribute1, "Didn't transfer hero1's tribute");
 
     // Add hero2 to squad0
-    await addMembers([hero2], [0], [summoner, hero1]);
+    await addMembers([hero2], [0], [summoner, hero1], [0, 0]);
 
     // Verify hero2 has been added
     assert(await squad0.isMember(hero2), "Didn't add hero2 to isMember");
@@ -298,7 +174,7 @@ contract("Fantastic12", accounts => {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
     let tribute1Str = `${tribute1}`;
-    await addMembers([hero1], [tribute1Str], [summoner]);
+    await addMembers([hero1], [tribute1Str], [summoner], [0]);
 
     // hero1 ragequits
     await squad0.rageQuit({ from: hero1 });
@@ -320,7 +196,7 @@ contract("Fantastic12", accounts => {
     // Transfer DAI from squad to hero1 and hero2
     let hero1Amount = `${3 * PRECISION}`;
     let hero2Amount = `${4 * PRECISION}`;
-    await transferDAI([hero1, hero2], [hero1Amount, hero2Amount], [summoner]);
+    await transferDAI([hero1, hero2], [hero1Amount, hero2Amount], [summoner], [0]);
 
     // Verify hero1 and hero2 received correct funds
     let initialBalance = 100 * PRECISION;
@@ -347,7 +223,8 @@ contract("Fantastic12", accounts => {
       amount,
       BountiesV1.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
 
     // Verify the bounty's info
@@ -375,12 +252,13 @@ contract("Fantastic12", accounts => {
       amount,
       BountiesV1.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result0.logs[0].args.bountyID;
 
     // Add reward to bounty
-    await addBountyReward(+bountyID, amount, BountiesV1.address, version, [summoner]);
+    await addBountyReward(+bountyID, amount, BountiesV1.address, version, [summoner], [1]);
 
     // Verify that reward has been added
     let bountyInfo = await BountiesV1.getBounty(bountyID);
@@ -404,12 +282,13 @@ contract("Fantastic12", accounts => {
       amount,
       BountiesV1.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result.logs[0].args.bountyID;
 
     // Refund reward
-    await refundBountyReward(+bountyID, [0], BountiesV1.address, version, [summoner]);
+    await refundBountyReward(+bountyID, [0], BountiesV1.address, version, [summoner], [1]);
 
     // Verify the reward has been refunded
     let bountyInfo = await BountiesV1.getBounty(bountyID);
@@ -433,13 +312,14 @@ contract("Fantastic12", accounts => {
       amount,
       BountiesV1.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result.logs[0].args.bountyID;
 
     // Change bounty's deadline
     let newDeadline = now + 2000;
-    await changeBountyDeadline(+bountyID, newDeadline, BountiesV1.address, version, [summoner]);
+    await changeBountyDeadline(+bountyID, newDeadline, BountiesV1.address, version, [summoner], [1]);
 
     // Verify that the deadline wad changed
     let bountyInfo = await BountiesV1.getBounty(bountyID);
@@ -464,7 +344,8 @@ contract("Fantastic12", accounts => {
       amount,
       BountiesV1.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = +result.logs[0].args.bountyID;
 
@@ -472,7 +353,7 @@ contract("Fantastic12", accounts => {
     await BountiesV1.fulfillBounty(bountyID, "TestData1", { from: hero1 });
 
     // Accept bounty fulfillment
-    await acceptBountySubmission(bountyID, 0, [], BountiesV1.address, version, [summoner]);
+    await acceptBountySubmission(bountyID, 0, [], BountiesV1.address, version, [summoner], [1]);
 
     // Verify that the bounty was fulfilled
     let bountyInfo = await BountiesV1.getBounty(bountyID);
@@ -508,7 +389,7 @@ contract("Fantastic12", accounts => {
 
     // Submit bounty fulfillment
     let fulfillmentData = "TestData1";
-    await fulfillBounty(bountyID, fulfillmentData, BountiesV1.address, version, [summoner]);
+    await fulfillBounty(bountyID, fulfillmentData, BountiesV1.address, version, [summoner], [0]);
 
     // Verify that the fulfillment has the correct info
     let fulfillmentID = 0;
@@ -556,12 +437,12 @@ contract("Fantastic12", accounts => {
 
     // Submit bounty fulfillment
     let fulfillmentData = "TestData1";
-    await fulfillBounty(bountyID, fulfillmentData, BountiesV1.address, version, [summoner]);
+    await fulfillBounty(bountyID, fulfillmentData, BountiesV1.address, version, [summoner], [0]);
 
     // Update bounty fulfillment
     let newData = "TestData2";
     let fulfillmentID = 0;
-    await updateBountyFulfillment(bountyID, fulfillmentID, newData, BountiesV1.address, version, [summoner]);
+    await updateBountyFulfillment(bountyID, fulfillmentID, newData, BountiesV1.address, version, [summoner], [1]);
   });
 
   it("postBounty()", async function () {
@@ -581,7 +462,8 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
 
     // Verify the bounty's info
@@ -613,12 +495,13 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result0.logs[0].args.bountyID;
 
     // Add reward to bounty
-    await addBountyReward(+bountyID, amount, Bounties.address, version, [summoner]);
+    await addBountyReward(+bountyID, amount, Bounties.address, version, [summoner], [1]);
 
     // Verify that reward has been added
     let bountyInfo = await Bounties.getBounty(bountyID);
@@ -642,12 +525,13 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result.logs[0].args.bountyID;
 
     // Refund reward
-    await refundBountyReward(+bountyID, [0], Bounties.address, version, [summoner]);
+    await refundBountyReward(+bountyID, [0], Bounties.address, version, [summoner], [1]);
 
     // Verify the reward has been refunded
     let bountyInfo = await Bounties.getBounty(bountyID);
@@ -671,13 +555,14 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result.logs[0].args.bountyID;
 
     // Change bounty's data
     let newData = "TestData1";
-    await changeBountyData(+bountyID, newData, Bounties.address, version, [summoner]);
+    await changeBountyData(+bountyID, newData, Bounties.address, version, [summoner], [1]);
   });
 
   it("changeBountyDeadline()", async function () {
@@ -697,13 +582,14 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = result.logs[0].args.bountyID;
 
     // Change bounty's deadline
     let newDeadline = now + 2000;
-    await changeBountyDeadline(+bountyID, newDeadline, Bounties.address, version, [summoner]);
+    await changeBountyDeadline(+bountyID, newDeadline, Bounties.address, version, [summoner], [1]);
 
     // Verify that the deadline wad changed
     let bountyInfo = await Bounties.getBounty(bountyID);
@@ -728,7 +614,8 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = +result.logs[0].args.bountyID;
 
@@ -738,7 +625,7 @@ contract("Fantastic12", accounts => {
     // Accept bounty fulfillment, splitting the reward 80/20 between hero1 and hero2
     let hero1Reward = `${amountNum * 0.8}`;
     let hero2Reward = `${amountNum * 0.2}`;
-    await acceptBountySubmission(bountyID, 0, [hero1Reward, hero2Reward], Bounties.address, version, [summoner]);
+    await acceptBountySubmission(bountyID, 0, [hero1Reward, hero2Reward], Bounties.address, version, [summoner], [1]);
 
     // Verify that the bounty was fulfilled
     let bountyInfo = await Bounties.getBounty(bountyID);
@@ -770,13 +657,14 @@ contract("Fantastic12", accounts => {
       amount,
       Bounties.address,
       version,
-      [summoner]
+      [summoner],
+      [0]
     );
     let bountyID = +result.logs[0].args.bountyID;
 
     // Perform action
     let actionData = "TestData1";
-    result = await performBountyAction(bountyID, actionData, Bounties.address, version, [summoner]);
+    result = await performBountyAction(bountyID, actionData, Bounties.address, version, [summoner], [1]);
   });
 
   it("fulfillBounty()", async function () {
@@ -803,7 +691,7 @@ contract("Fantastic12", accounts => {
 
     // Submit bounty fulfillment
     let fulfillmentData = "TestData1";
-    await fulfillBounty(bountyID, fulfillmentData, Bounties.address, version, [summoner]);
+    await fulfillBounty(bountyID, fulfillmentData, Bounties.address, version, [summoner], [0]);
 
     // Verify that the fulfillment has the correct info
     let fulfillmentID = 0;
@@ -854,11 +742,11 @@ contract("Fantastic12", accounts => {
 
     // Submit bounty fulfillment
     let fulfillmentData = "TestData1";
-    await fulfillBounty(bountyID, fulfillmentData, Bounties.address, version, [summoner]);
+    await fulfillBounty(bountyID, fulfillmentData, Bounties.address, version, [summoner], [0]);
 
     // Update bounty fulfillment
     let newData = "TestData2";
     let fulfillmentID = 0;
-    await updateBountyFulfillment(bountyID, fulfillmentID, newData, Bounties.address, version, [summoner]);
+    await updateBountyFulfillment(bountyID, fulfillmentID, newData, Bounties.address, version, [summoner], [1]);
   });
 });

@@ -15,8 +15,8 @@ contract Fantastic12 {
 
   // Instance variables
   mapping(address => bool) public isMember;
+  mapping(address => mapping(uint256 => bool)) public hasUsedSalt; // Stores whether a salt has been used for a member
   uint8 public memberCount;
-  uint256 public nonce; // How many function calls have happened. Used for signature security.
   IERC20 public DAI;
   address payable[] public issuersOrFulfillers;
   address[] public approvers;
@@ -31,14 +31,16 @@ contract Fantastic12 {
     bytes4           _funcSelector,
     bytes     memory _funcParams,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   ) {
     require(
       _consensusReached(
         _funcSelector,
         _funcParams,
         _members,
-        _signatures
+        _signatures,
+        _salts
       ), "No consensus");
     _;
   }
@@ -64,7 +66,6 @@ contract Fantastic12 {
     address _DAI_ADDR
   ) public {
     memberCount = 1;
-    nonce = 0;
     DAI = IERC20(_DAI_ADDR);
     issuersOrFulfillers = new address payable[](1);
     issuersOrFulfillers[0] = address(this);
@@ -87,14 +88,16 @@ contract Fantastic12 {
   function declare(
     string memory _message,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.declare.selector,
       abi.encode(_message),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     emit Declare(_message);
@@ -108,14 +111,16 @@ contract Fantastic12 {
     address[] memory _newMembers,
     uint256[] memory _tributes,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.addMembers.selector,
       abi.encode(_newMembers, _tributes),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     require(_newMembers.length == _tributes.length, "_newMembers not same length as _tributes");
@@ -163,14 +168,16 @@ contract Fantastic12 {
     address[] memory _dests,
     uint256[] memory _amounts,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.transferDAI.selector,
       abi.encode(_dests, _amounts),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     require(_dests.length == _amounts.length, "_dests not same length as _amounts");
@@ -190,14 +197,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.postBounty.selector,
       abi.encode(_dataIPFSHash, _deadline, _reward, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
     returns (uint256 _bountyID)
   {
@@ -240,14 +249,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.addBountyReward.selector,
       abi.encode(_bountyID, _reward, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     // Approve DAI reward to bounties contract
@@ -270,14 +281,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.refundBountyReward.selector,
       abi.encode(_bountyID, _contributionIDs, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     uint256 beforeBalance = DAI.balanceOf(address(this));
@@ -297,14 +310,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.changeBountyData.selector,
       abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     _standardBounties.changeData(
@@ -322,14 +337,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.changeBountyDeadline.selector,
       abi.encode(_bountyID, _deadline, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     _standardBounties.changeDeadline(
@@ -348,14 +365,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.acceptBountySubmission.selector,
       abi.encode(_bountyID, _fulfillmentID, _tokenAmounts, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     _standardBounties.acceptFulfillment(
@@ -378,14 +397,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.performBountyAction.selector,
       abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     _standardBounties.performAction(
@@ -403,14 +424,16 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.fulfillBounty.selector,
       abi.encode(_bountyID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
   {
     _standardBounties.fulfillBounty(
@@ -430,15 +453,29 @@ contract Fantastic12 {
     address _standardBounties,
     uint256 _standardBountiesVersion,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   )
     public
     withConsensus(
       this.updateBountyFulfillment.selector,
       abi.encode(_bountyID, _fulfillmentID, _dataIPFSHash, _standardBounties, _standardBountiesVersion),
       _members,
-      _signatures
+      _signatures,
+      _salts
     )
+  {
+    _updateBountyFulfillment(_bountyID, _fulfillmentID, _dataIPFSHash, _standardBounties, _standardBountiesVersion);
+  }
+
+  function _updateBountyFulfillment(
+    uint256 _bountyID,
+    uint256 _fulfillmentID,
+    string memory _dataIPFSHash,
+    address _standardBounties,
+    uint256 _standardBountiesVersion
+  )
+    internal
   {
     _standardBounties.updateFulfillment(
       _standardBountiesVersion,
@@ -457,9 +494,11 @@ contract Fantastic12 {
 
   function naiveMessageHash(
     bytes4       _funcSelector,
-    bytes memory _funcParams
+    bytes memory _funcParams,
+    uint256      _salt
   ) public view returns (bytes32) {
-    return keccak256(abi.encodeWithSelector(_funcSelector, _funcParams, nonce, address(this)));
+    // "|END|" is used to separate _funcParams from the rest, to prevent maliciously ambiguous signatures
+    return keccak256(abi.encodeWithSelector(_funcSelector, _funcParams, "|END|", _salt, address(this)));
   }
 
   function consensusThreshold() public view returns (uint8) {
@@ -471,26 +510,32 @@ contract Fantastic12 {
     bytes4           _funcSelector,
     bytes     memory _funcParams,
     address[] memory _members,
-    bytes[]   memory _signatures
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
   ) internal returns (bool) {
-    // Hash of _funcSelector + _funcParams + nonce + address(this)
-    bytes32 msgHash = ECDSA.toEthSignedMessageHash(naiveMessageHash(_funcSelector, _funcParams));
-
     // Check if the number of signatures exceed the consensus threshold
     if (_members.length != _signatures.length || _members.length < consensusThreshold()) {
       return false;
     }
     // Check if each signature is valid and signed by a member
     for (uint256 i = 0; i < _members.length; i = i.add(1)) {
+      address member = _members[i];
+      uint256 salt = _salts[i];
+      if (!isMember[member] || hasUsedSalt[member][salt]) {
+        // Invalid member or salt already used
+        return false;
+      }
+
+      bytes32 msgHash = ECDSA.toEthSignedMessageHash(naiveMessageHash(_funcSelector, _funcParams, salt));
       address recoveredAddress = ECDSA.recover(msgHash, _signatures[i]);
-      if (recoveredAddress != _members[i] || !isMember[recoveredAddress]) {
+      if (recoveredAddress != member) {
         // Invalid signature
         return false;
       }
-    }
 
-    // Increment the nonce
-    nonce = nonce.add(1);
+      // Signature valid, record use of salt
+      hasUsedSalt[member][salt] = true;
+    }
 
     return true;
   }
