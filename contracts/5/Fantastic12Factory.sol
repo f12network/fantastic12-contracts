@@ -3,7 +3,7 @@ pragma solidity 0.5.12;
 import "./Fantastic12.sol";
 
 contract Fantastic12Factory {
-  address public constant DAI_ADDR = 0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359;
+  address public constant DAI_ADDR = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 
   event CreateSquad(address indexed summoner, address squad);
 
