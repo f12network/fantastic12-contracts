@@ -1,4 +1,4 @@
-pragma solidity 0.5.12;
+pragma solidity 0.5.13;
 
 import "./v1/IStandardBountiesV1.sol";
 import "./v2/StandardBounties.sol";
