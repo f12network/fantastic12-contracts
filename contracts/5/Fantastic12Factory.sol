@@ -11,7 +11,8 @@ contract Fantastic12Factory {
     public
     returns (Fantastic12 _squad)
   {
-    _squad = new Fantastic12(
+    _squad = new Fantastic12();
+    _squad.init(
       _summoner,
       DAI_ADDR
     );

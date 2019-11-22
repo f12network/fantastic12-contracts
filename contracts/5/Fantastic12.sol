@@ -20,6 +20,7 @@ contract Fantastic12 {
   IERC20 public DAI;
   address payable[] public issuersOrFulfillers;
   address[] public approvers;
+  bool initialized;
 
   // Modifiers
   modifier onlyMember {
@@ -60,11 +61,13 @@ contract Fantastic12 {
   event FulfillBounty(uint256 bountyID);
   event UpdateBountyFulfillment(uint256 bountyID, uint256 fulfillmentID);
 
-  // Constructor
-  constructor(
+  // Initializer
+  function init(
     address _summoner,
     address _DAI_ADDR
   ) public {
+    require(! initialized, "Initialized");
+    initialized = true;
     memberCount = 1;
     DAI = IERC20(_DAI_ADDR);
     issuersOrFulfillers = new address payable[](1);

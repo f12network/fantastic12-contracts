@@ -127,7 +127,8 @@ contract("Fantastic12", accounts => {
     DAI = await MockERC20.new();
     Bounties = await StandardBounties.new();
     BountiesV1 = await StandardBountiesV1.new();
-    squad0 = await Fantastic12.new(summoner, DAI.address);
+    squad0 = await Fantastic12.new();
+    await squad0.init(summoner, DAI.address);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
