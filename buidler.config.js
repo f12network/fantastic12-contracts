@@ -1,5 +1,11 @@
 usePlugin("@nomiclabs/buidler-truffle5");
 
+const secret;
+
+try {
+  secret = require('./secret.json');
+}
+
 module.exports = {
   solc: {
     version: "0.5.13",
@@ -15,9 +21,9 @@ module.exports = {
     mainnet: {
       url: "https://mainnet.infura.io/v3/7a7dd3472294438eab040845d03c215c",
       chainId: 1,
-      from: require('./secret.json').account,
+      from: secret.account,
       accounts: {
-        mnemonic: require('./secret.json').mnemonic
+        mnemonic: secret.mnemonic
       }
     }
   }
