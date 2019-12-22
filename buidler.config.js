@@ -1,9 +1,14 @@
 usePlugin("@nomiclabs/buidler-truffle5");
 
-const secret;
+let secret;
 
 try {
   secret = require('./secret.json');
+} catch {
+  secret = {
+    account: "",
+    mnemonic: ""
+  };
 }
 
 module.exports = {
