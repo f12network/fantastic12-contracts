@@ -4,9 +4,11 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./standard_bounties/StandardBountiesWrapper.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 contract Fantastic12 {
   using SafeMath for uint256;
+  using SafeERC20 for IERC20;
   using StandardBountiesWrapper for address;
 
   // Constants
@@ -50,7 +52,7 @@ contract Fantastic12 {
   event Shout(string message);
   event Declare(string message);
   event AddMember(address newMember, uint256 tribute);
-  event RageQuit(address quitter, uint256 fundsWithdrawn);
+  event RageQuit(address quitter);
   event PostBounty(uint256 bountyID, uint256 reward);
   event AddBountyReward(uint256 bountyID, uint256 reward);
   event RefundBountyReward(uint256 bountyID, uint256 refundAmount);
@@ -152,15 +154,24 @@ contract Fantastic12 {
     emit AddMember(_newMember, _tribute);
   }
 
-  function rageQuit() public onlyMember {
+  function rageQuit(address[] memory _tokens) public onlyMember {
     // Give `msg.sender` their portion of the squad funds
-    uint256 withdrawAmount = DAI.balanceOf(address(this)).div(memberCount);
-    require(DAI.transfer(msg.sender, withdrawAmount), "Withdraw failed");
+    uint256 withdrawAmount;
+    for (uint256 i = 0; i < _tokens.length; i = i.add(1)) {
+      if (_tokens[i] == address(0)) {
+        withdrawAmount = address(this).balance.div(memberCount);
+        msg.sender.transfer(withdrawAmount);
+      } else {
+        IERC20 token = IERC20(_tokens[i]);
+        withdrawAmount = token.balanceOf(address(this)).div(memberCount);
+        require(token.safeTransfer(msg.sender, withdrawAmount), "Failed token transfer");
+      }
+    }
 
     // Remove `msg.sender` from squad
     isMember[msg.sender] = false;
     memberCount -= 1;
-    emit RageQuit(msg.sender, withdrawAmount);
+    emit RageQuit(msg.sender);
   }
 
   /**
@@ -186,6 +197,34 @@ contract Fantastic12 {
     require(_dests.length == _amounts.length, "_dests not same length as _amounts");
     for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
       require(DAI.transfer(_dests[i], _amounts[i]), "Failed DAI transfer");
+    }
+  }
+
+  function transferTokens(
+    address[] memory _dests,
+    uint256[] memory _amounts,
+    address[] memory _tokens,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withConsensus(
+      this.transferTokens.selector,
+      abi.encode(_dests, _amounts, _tokens),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    require(_dests.length == _amounts.length && _dests.length == _tokens.length, "_dests, _amounts, _tokens not of same length");
+    for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
+      if (_tokens[i] == address(0)) {
+        _dests[i].transfer(_amounts[i]);
+      } else {
+        IERC20 token = IERC20(_tokens[i]);
+        require(token.safeTransfer(_dests[i], _amounts[i]), "Failed token transfer");
+      }
     }
   }
 
@@ -543,7 +582,5 @@ contract Fantastic12 {
     return true;
   }
 
-  function() external payable {
-    revert("Doesn't support receiving Ether");
-  }
+  function() external payable {}
 }

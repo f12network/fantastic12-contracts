@@ -178,7 +178,7 @@ contract("Fantastic12", accounts => {
     await addMembers([hero1], [tribute1Str], [summoner], [0]);
 
     // hero1 ragequits
-    await squad0.rageQuit({ from: hero1 });
+    await squad0.rageQuit([DAI.address], { from: hero1 });
 
     // Verify hero1 has been removed
     assert.equal(await squad0.isMember(hero1), false, "Didn't remove hero1 from isMember");
