@@ -20,7 +20,10 @@ contract Fantastic12 {
   IERC20 public DAI;
   address payable[] public issuersOrFulfillers;
   address[] public approvers;
-  bool initialized;
+  uint256 public withdrawLimit;
+  uint256 public withdrawnToday;
+  uint256 public lastWithdrawTimestamp;
+  bool public initialized;
 
   // Modifiers
   modifier onlyMember {
@@ -37,12 +40,32 @@ contract Fantastic12 {
   ) {
     require(
       _consensusReached(
+        consensusThreshold(),
         _funcSelector,
         _funcParams,
         _members,
         _signatures,
         _salts
       ), "No consensus");
+    _;
+  }
+
+  modifier withUnanimity(
+    bytes4           _funcSelector,
+    bytes     memory _funcParams,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  ) {
+    require(
+      _consensusReached(
+        memberCount,
+        _funcSelector,
+        _funcParams,
+        _members,
+        _signatures,
+        _salts
+      ), "No unanimity");
     _;
   }
 
@@ -64,7 +87,8 @@ contract Fantastic12 {
   // Initializer
   function init(
     address _summoner,
-    address _DAI_ADDR
+    address _DAI_ADDR,
+    uint256 _withdrawLimit
   ) public {
     require(! initialized, "Initialized");
     initialized = true;
@@ -74,6 +98,7 @@ contract Fantastic12 {
     issuersOrFulfillers[0] = address(this);
     approvers = new address[](1);
     approvers[0] = address(this);
+    withdrawLimit = _withdrawLimit;
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
@@ -185,8 +210,26 @@ contract Fantastic12 {
   {
     require(_dests.length == _amounts.length, "_dests not same length as _amounts");
     for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
-      require(DAI.transfer(_dests[i], _amounts[i]), "Failed DAI transfer");
+      _transferDAI(_dests[i], _amounts[i]);
     }
+  }
+
+  function setWithdrawLimit(
+    uint256 _newLimit,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withUnanimity(
+      this.setWithdrawLimit.selector,
+      abi.encode(_newLimit),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    withdrawLimit = _newLimit;
   }
 
   /**
@@ -229,8 +272,7 @@ contract Fantastic12 {
     require(_reward > 0, "Reward can't be 0");
 
     // Approve DAI reward to bounties contract
-    require(DAI.approve(_standardBounties, 0), "Failed to clear DAI approval");
-    require(DAI.approve(_standardBounties, _reward), "Failed to approve bounty reward");
+    _approveDAI(_standardBounties, _reward);
 
     _bountyID = _standardBounties.issueAndContribute(
       _standardBountiesVersion,
@@ -265,8 +307,7 @@ contract Fantastic12 {
     )
   {
     // Approve DAI reward to bounties contract
-    require(DAI.approve(_standardBounties, 0), "Failed to clear DAI approval");
-    require(DAI.approve(_standardBounties, _reward), "Failed to approve bounty reward");
+    _approveDAI(_standardBounties, _reward);
 
     _standardBounties.contribute(
       _standardBountiesVersion,
@@ -510,6 +551,7 @@ contract Fantastic12 {
   }
 
   function _consensusReached(
+    uint256          _threshold,
     bytes4           _funcSelector,
     bytes     memory _funcParams,
     address[] memory _members,
@@ -517,7 +559,7 @@ contract Fantastic12 {
     uint256[] memory _salts
   ) internal returns (bool) {
     // Check if the number of signatures exceed the consensus threshold
-    if (_members.length != _signatures.length || _members.length < consensusThreshold()) {
+    if (_members.length != _signatures.length || _members.length < _threshold) {
       return false;
     }
     // Check if each signature is valid and signed by a member
@@ -541,6 +583,34 @@ contract Fantastic12 {
     }
 
     return true;
+  }
+
+  function _timestampToDayID(uint256 _timestamp) internal pure returns (uint256) {
+    return _timestamp.sub(_timestamp % 86400).div(86400);
+  }
+
+  // limits how much could be withdrawn each day, should be called before transfer() or approve()
+  function _applyWithdrawLimit(uint256 _amount) internal {
+    // check if the limit will be exceeded
+    if (_timestampToDayID(now).sub(_timestampToDayID(lastWithdrawTimestamp)) >= 1) {
+      // new day, don't care about existing limit
+      withdrawnToday = 0;
+    }
+    uint256 newWithdrawnToday = withdrawnToday.add(_amount);
+    require(newWithdrawnToday <= withdrawLimit, "Withdraw limit exceeded");
+    withdrawnToday = newWithdrawnToday;
+    lastWithdrawTimestamp = now;
+  }
+
+  function _transferDAI(address _to, uint256 _amount) internal {
+    _applyWithdrawLimit(_amount);
+    require(DAI.transfer(_to, _amount), "Failed DAI transfer");
+  }
+
+  function _approveDAI(address _to, uint256 _amount) internal {
+    _applyWithdrawLimit(_amount);
+    require(DAI.approve(_to, 0), "Failed to clear DAI approval");
+    require(DAI.approve(_to, _amount), "Failed to approve DAI");
   }
 
   function() external payable {
