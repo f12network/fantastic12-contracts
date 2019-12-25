@@ -24,7 +24,8 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
     // Transfer fee from msg.sender
     if (priceInDAI > 0) {
       IERC20 dai = IERC20(DAI_ADDR);
-      require(dai.transferFrom(msg.sender, beneficiary, priceInDAI), "Fee transfer failed");
+      require(dai.transferFrom(msg.sender, address(this), priceInDAI), "DAI transferFrom failed");
+      require(dai.transfer(beneficiary, priceInDAI), "DAI transfer failed");
     }
 
     // Create squad
