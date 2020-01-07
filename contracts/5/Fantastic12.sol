@@ -164,7 +164,7 @@ contract Fantastic12 {
       } else {
         IERC20 token = IERC20(_tokens[i]);
         withdrawAmount = token.balanceOf(address(this)).div(memberCount);
-        require(token.safeTransfer(msg.sender, withdrawAmount), "Failed token transfer");
+        token.safeTransfer(msg.sender, withdrawAmount);
       }
     }
 
@@ -201,7 +201,7 @@ contract Fantastic12 {
   }
 
   function transferTokens(
-    address[] memory _dests,
+    address payable[] memory _dests,
     uint256[] memory _amounts,
     address[] memory _tokens,
     address[] memory _members,
@@ -223,7 +223,7 @@ contract Fantastic12 {
         _dests[i].transfer(_amounts[i]);
       } else {
         IERC20 token = IERC20(_tokens[i]);
-        require(token.safeTransfer(_dests[i], _amounts[i]), "Failed token transfer");
+        token.safeTransfer(_dests[i], _amounts[i]);
       }
     }
   }

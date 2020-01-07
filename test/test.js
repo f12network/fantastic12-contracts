@@ -4,6 +4,9 @@ const StandardBountiesV1 = artifacts.require("StandardBountiesV1");
 const MockERC20 = artifacts.require("MockERC20");
 
 const PRECISION = 1e18;
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
+
+const BigNumber = require('bignumber.js');
 
 contract("Fantastic12", accounts => {
   const summoner = accounts[0];
@@ -49,6 +52,13 @@ contract("Fantastic12", accounts => {
     let func = 'transferDAI';
     let argTypes = ['address[]', 'uint256[]'];
     let args = [dests, amounts];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+
+  let transferTokens = async function (dests, amounts, tokens, approvers, salts) {
+    let func = 'transferTokens';
+    let argTypes = ['address[]', 'uint256[]', 'address[]'];
+    let args = [dests, amounts, tokens];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
@@ -125,6 +135,7 @@ contract("Fantastic12", accounts => {
   beforeEach(async function () {
     // Init contracts
     DAI = await MockERC20.new();
+    TOK = await MockERC20.new(); // non-DAI ERC20 token
     Bounties = await StandardBounties.new();
     BountiesV1 = await StandardBountiesV1.new();
     squad0 = await Fantastic12.new();
@@ -135,6 +146,11 @@ contract("Fantastic12", accounts => {
     await DAI.mint(summoner, mintAmount);
     await DAI.mint(hero1, mintAmount);
     await DAI.mint(hero2, mintAmount);
+
+    // Mint TOK for accounts
+    await TOK.mint(summoner, mintAmount);
+    await TOK.mint(hero1, mintAmount);
+    await TOK.mint(hero2, mintAmount);
   });
 
   it("shout()", async function() {
@@ -205,6 +221,29 @@ contract("Fantastic12", accounts => {
     let actualHero2Amount = +(await DAI.balanceOf(hero2)) - initialBalance;
     assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
     assert.equal(hero2Amount, actualHero2Amount, "hero2 received amount mismatch");
+  });
+
+  it("transferTokens()", async function () {
+    // Transfer TOK from summoner to squad
+    let amount = 10 * PRECISION;
+    let amountStr = `${amount}`;
+    await TOK.transfer(squad0.address, amountStr);
+
+    // Transfer Ether from summoner to squad
+    await web3.eth.sendTransaction({from: summoner, to: squad0.address, value: amountStr});
+
+    // Transfer TOK and Ether from squad to hero1 and hero2
+    let hero1Amount = `${3 * PRECISION}`;
+    let hero2Amount = `${4 * PRECISION}`;
+    let hero2InitialBalance = +(await web3.eth.getBalance(hero2));
+    await transferTokens([hero1, hero2], [hero1Amount, hero2Amount], [TOK.address, ZERO_ADDR], [summoner], [0]);
+
+    // Verify hero1 and hero2 received correct funds
+    let hero1InitialBalance = 100 * PRECISION;
+    let actualHero1Amount = +(await TOK.balanceOf(hero1)) - hero1InitialBalance;
+    let actualHero2Amount = BigNumber(await web3.eth.getBalance(hero2)).minus(hero2InitialBalance);
+    assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
+    assert(actualHero2Amount.eq(hero2Amount), "hero2 received amount mismatch");
   });
 
   it("postBounty() V1", async function () {
