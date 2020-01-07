@@ -246,6 +246,8 @@ contract Fantastic12 {
     for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
       if (_tokens[i] == address(0)) {
         _dests[i].transfer(_amounts[i]);
+      } else if (_tokens[i] == address(DAI)) {
+        _transferDAI(_dests[i], _amounts[i]);
       } else {
         IERC20 token = IERC20(_tokens[i]);
         token.safeTransfer(_dests[i], _amounts[i]);
