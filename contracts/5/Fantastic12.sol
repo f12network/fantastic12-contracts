@@ -12,8 +12,9 @@ contract Fantastic12 {
   using StandardBountiesWrapper for address;
 
   // Constants
-  uint8 public constant MAX_MEMBERS = 12;
-  uint8 public constant BLOCKING_THRESHOLD = 4; // More than 1 / `BLOCKING_THRESHOLD` of members need to not consent to block consensus
+  uint8  public constant MAX_MEMBERS = 12;
+  uint8  public constant BLOCKING_THRESHOLD = 4; // More than 1 / `BLOCKING_THRESHOLD` of members need to not consent to block consensus
+  string public constant VERSION = "0.1.0";
 
   // Instance variables
   mapping(address => bool) public isMember;
