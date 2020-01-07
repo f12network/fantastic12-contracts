@@ -17,6 +17,7 @@ contract("Fantastic12", accounts => {
   let Bounties;
   let BountiesV1;
   let squad0;
+  let withdrawLimit;
 
   let approveAndSubmit = async function (func, argTypes, args, approvers, salts) {
     let funcSig = web3.eth.abi.encodeFunctionSignature(`${func}(${argTypes.join()},address[],bytes[],uint256[])`);
@@ -55,6 +56,13 @@ contract("Fantastic12", accounts => {
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
+  let setWithdrawLimit = async function (newLimit, approvers, salts) {
+    let func = 'setWithdrawLimit';
+    let argTypes = ['uint256'];
+    let args = [newLimit];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+    
   let transferTokens = async function (dests, amounts, tokens, approvers, salts) {
     let func = 'transferTokens';
     let argTypes = ['address[]', 'uint256[]', 'address[]'];
@@ -139,7 +147,8 @@ contract("Fantastic12", accounts => {
     Bounties = await StandardBounties.new();
     BountiesV1 = await StandardBountiesV1.new();
     squad0 = await Fantastic12.new();
-    await squad0.init(summoner, DAI.address);
+    withdrawLimit = `${20 * PRECISION}`;
+    await squad0.init(summoner, DAI.address, withdrawLimit);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
@@ -244,6 +253,13 @@ contract("Fantastic12", accounts => {
     let actualHero2Amount = BigNumber(await web3.eth.getBalance(hero2)).minus(hero2InitialBalance);
     assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
     assert(actualHero2Amount.eq(hero2Amount), "hero2 received amount mismatch");
+  });
+
+  it("setWithdrawLimit()", async function () {
+    let newLimit = `${30 * PRECISION}`;
+    await setWithdrawLimit(newLimit, [summoner], [0]);
+    let actualNewLimit = await squad0.withdrawLimit();
+    assert.equal(newLimit, actualNewLimit, "new withdraw limit mismatch");
   });
 
   it("postBounty() V1", async function () {

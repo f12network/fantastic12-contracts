@@ -17,19 +17,20 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
     template = _template;
   }
 
-  function createSquad(address _summoner)
+  function createSquad(address _summoner, uint256 _withdrawLimit)
     public
     returns (Fantastic12 _squad)
   {
     // Transfer fee from msg.sender
     if (priceInDAI > 0) {
       IERC20 dai = IERC20(DAI_ADDR);
-      require(dai.transferFrom(msg.sender, beneficiary, priceInDAI), "Fee transfer failed");
+      require(dai.transferFrom(msg.sender, address(this), priceInDAI), "DAI transferFrom failed");
+      require(dai.transfer(beneficiary, priceInDAI), "DAI transfer failed");
     }
 
     // Create squad
     _squad = Fantastic12(_toPayableAddr(createClone(template)));
-    _squad.init(_summoner, DAI_ADDR);
+    _squad.init(_summoner, DAI_ADDR, _withdrawLimit);
     emit CreateSquad(_summoner, address(_squad));
   }
 

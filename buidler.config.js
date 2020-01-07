@@ -1,4 +1,5 @@
 usePlugin("@nomiclabs/buidler-truffle5");
+usePlugin("@nomiclabs/buidler-etherscan");
 
 let secret;
 
@@ -31,5 +32,13 @@ module.exports = {
         mnemonic: secret.mnemonic
       }
     }
+  },
+  etherscan: {
+    // The url for the Etherscan API you want to use.
+    // For example, here we're using the one for the Ropsten test network
+    url: "https://api.etherscan.io/api",
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: "Q8RK76PHC75A3KBHQNBPZPVXIVF35Q32Q2"
   }
 };
