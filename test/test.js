@@ -63,6 +63,13 @@ contract("Fantastic12", accounts => {
     let args = [newLimit];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
+
+  let setConsensusThreshold = async function (newThreshold, approvers, salts) {
+    let func = 'setConsensusThreshold';
+    let argTypes = ['uint256'];
+    let args = [newThreshold];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
     
   let transferTokens = async function (dests, amounts, tokens, approvers, salts) {
     let func = 'transferTokens';
@@ -279,6 +286,13 @@ contract("Fantastic12", accounts => {
     await setWithdrawLimit(newLimit, [summoner], [0]);
     let actualNewLimit = await squad0.withdrawLimit();
     assert.equal(newLimit, actualNewLimit, "new withdraw limit mismatch");
+  });
+
+  it("setConsensusThreshold()", async function () {
+    let newThreshold = `${0.6 * PRECISION}`;
+    await setWithdrawLimit(newThreshold, [summoner], [0]);
+    let actualNewThreshold = await squad0.consensusThresholdPercentage();
+    assert.equal(newThreshold, actualNewThreshold, "new consensus threshold mismatch");
   });
 
   it("postBounty() V1", async function () {

@@ -1,4 +1,4 @@
-pragma solidity 0.5.13;
+pragma solidity 0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
@@ -13,7 +13,7 @@ contract Fantastic12 {
 
   // Constants
   uint8   public constant MAX_MEMBERS = 12;
-  string  public constant VERSION = "0.1.3";
+  string  public constant VERSION = "0.1.4";
   uint256 internal constant PRECISION = 10 ** 18;
 
   // Instance variables
@@ -288,6 +288,24 @@ contract Fantastic12 {
     )
   {
     withdrawLimit = _newLimit;
+  }
+
+  function setConsensusThreshold(
+    uint256 _newThresholdPercentage,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withUnanimity(
+      this.setConsensusThreshold.selector,
+      abi.encode(_newThresholdPercentage),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    consensusThresholdPercentage = _newThresholdPercentage;
   }
 
   /**
