@@ -305,6 +305,7 @@ contract Fantastic12 {
       _salts
     )
   {
+    require(_newThresholdPercentage <= PRECISION, "Consensus threshold > 1");
     consensusThresholdPercentage = _newThresholdPercentage;
   }
 
