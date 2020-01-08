@@ -290,9 +290,9 @@ contract("Fantastic12", accounts => {
 
   it("setConsensusThreshold()", async function () {
     let newThreshold = `${0.6 * PRECISION}`;
-    await setWithdrawLimit(newThreshold, [summoner], [0]);
+    await setConsensusThreshold(newThreshold, [summoner], [0]);
     let actualNewThreshold = await squad0.consensusThresholdPercentage();
-    assert.equal(newThreshold, actualNewThreshold, "new consensus threshold mismatch");
+    assert.equal(newThreshold, actualNewThreshold.toString(), "new consensus threshold mismatch");
   });
 
   it("postBounty() V1", async function () {
