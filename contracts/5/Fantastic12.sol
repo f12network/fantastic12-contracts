@@ -12,9 +12,9 @@ contract Fantastic12 {
   using StandardBountiesWrapper for address;
 
   // Constants
-  uint8  public constant MAX_MEMBERS = 12;
-  uint8  public constant BLOCKING_THRESHOLD = 4; // More than 1 / `BLOCKING_THRESHOLD` of members need to not consent to block consensus
-  string public constant VERSION = "0.1.0";
+  uint8   public constant MAX_MEMBERS = 12;
+  string  public constant VERSION = "0.1.2";
+  uint256 internal constant PRECISION = 10 ** 18;
 
   // Instance variables
   mapping(address => bool) public isMember;
@@ -26,6 +26,7 @@ contract Fantastic12 {
   uint256 public withdrawLimit;
   uint256 public withdrawnToday;
   uint256 public lastWithdrawTimestamp;
+  uint256 public consensusThresholdPercentage; // at least (consensusThresholdPercentage * memberCount / PRECISION) approvers are needed to execute an action
   bool public initialized;
 
   // Modifiers
@@ -91,9 +92,11 @@ contract Fantastic12 {
   function init(
     address _summoner,
     address _DAI_ADDR,
-    uint256 _withdrawLimit
+    uint256 _withdrawLimit,
+    uint256 _consensusThresholdPercentage
   ) public {
     require(! initialized, "Initialized");
+    require(_consensusThresholdPercentage <= PRECISION, "Consensus threshold > 1");
     initialized = true;
     memberCount = 1;
     DAI = IERC20(_DAI_ADDR);
@@ -102,6 +105,7 @@ contract Fantastic12 {
     approvers = new address[](1);
     approvers[0] = address(this);
     withdrawLimit = _withdrawLimit;
+    consensusThresholdPercentage = _consensusThresholdPercentage;
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
@@ -588,7 +592,7 @@ contract Fantastic12 {
   }
 
   function consensusThreshold() public view returns (uint8) {
-    uint8 blockingThresholdMemberCount = memberCount / BLOCKING_THRESHOLD;
+    uint8 blockingThresholdMemberCount = uint8(PRECISION.sub(consensusThresholdPercentage).mul(memberCount).div(PRECISION));
     return memberCount - blockingThresholdMemberCount;
   }
 

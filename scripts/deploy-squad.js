@@ -15,7 +15,9 @@ async function main() {
   console.log(`Deployed Fantastic12Factory at address ${factory.address}`);
 
   // Deploy squad
-  const result = await factory.createSquad(accounts[0]);
+  const withdrawLimit = `${20 * PRECISION}`;
+  const consensusThreshold = `${0.75 * PRECISION}`;
+  const result = await factory.createSquad(accounts[0], withdrawLimit, consensusThreshold);
   const squadAddress = result.logs[0].args.squad;
   console.log(`Deployed Fantastic12 squad at address ${squadAddress}`);
 }

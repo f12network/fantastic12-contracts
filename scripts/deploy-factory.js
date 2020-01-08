@@ -15,6 +15,7 @@ async function main() {
   await squad.init(
     accounts[0],
     DAI_ADDR,
+    0,
     0
   );
   console.log(`Deployed Fantastic12 at address ${squad.address}`);

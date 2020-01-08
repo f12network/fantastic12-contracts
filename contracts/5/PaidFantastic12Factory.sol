@@ -17,7 +17,7 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
     template = _template;
   }
 
-  function createSquad(address _summoner, uint256 _withdrawLimit)
+  function createSquad(address _summoner, uint256 _withdrawLimit, uint256 _consensusThreshold)
     public
     returns (Fantastic12 _squad)
   {
@@ -30,7 +30,7 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
 
     // Create squad
     _squad = Fantastic12(_toPayableAddr(createClone(template)));
-    _squad.init(_summoner, DAI_ADDR, _withdrawLimit);
+    _squad.init(_summoner, DAI_ADDR, _withdrawLimit, _consensusThreshold);
     emit CreateSquad(_summoner, address(_squad));
   }
 

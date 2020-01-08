@@ -7,7 +7,7 @@ contract Fantastic12Factory {
 
   event CreateSquad(address indexed summoner, address squad);
 
-  function createSquad(address _summoner, uint256 _withdrawLimit)
+  function createSquad(address _summoner, uint256 _withdrawLimit, uint256 _consensusThreshold)
     public
     returns (Fantastic12 _squad)
   {
@@ -15,7 +15,8 @@ contract Fantastic12Factory {
     _squad.init(
       _summoner,
       DAI_ADDR,
-      _withdrawLimit
+      _withdrawLimit,
+      _consensusThreshold
     );
     emit CreateSquad(_summoner, address(_squad));
   }

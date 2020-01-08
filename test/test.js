@@ -18,6 +18,7 @@ contract("Fantastic12", accounts => {
   let BountiesV1;
   let squad0;
   let withdrawLimit;
+  let consensusThreshold;
 
   let approveAndSubmit = async function (func, argTypes, args, approvers, salts) {
     let funcSig = web3.eth.abi.encodeFunctionSignature(`${func}(${argTypes.join()},address[],bytes[],uint256[])`);
@@ -148,7 +149,8 @@ contract("Fantastic12", accounts => {
     BountiesV1 = await StandardBountiesV1.new();
     squad0 = await Fantastic12.new();
     withdrawLimit = `${20 * PRECISION}`;
-    await squad0.init(summoner, DAI.address, withdrawLimit);
+    consensusThreshold = `${0.75 * PRECISION}`;
+    await squad0.init(summoner, DAI.address, withdrawLimit, consensusThreshold);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
