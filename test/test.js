@@ -205,7 +205,24 @@ contract("Fantastic12", accounts => {
     await addMembers([hero1], [tribute1Str], [summoner], [0]);
 
     // hero1 ragequits
-    await squad0.rageQuit([DAI.address], { from: hero1 });
+    await squad0.rageQuit({ from: hero1 });
+
+    // Verify hero1 has been removed
+    assert.equal(await squad0.isMember(hero1), false, "Didn't remove hero1 from isMember");
+    assert.equal(await squad0.memberCount(), 1, "Didn't remove hero1 from memberCount");
+
+    // Verify hero1 received half of squad funds
+    assert.equal(await DAI.balanceOf(squad0.address), tribute1 / 2, "Didn't withdraw funds to hero1");
+  });
+
+  it("rageQuitWithTokens()", async function () {
+    // Add hero1 to squad0
+    let tribute1 = 10 * PRECISION;
+    let tribute1Str = `${tribute1}`;
+    await addMembers([hero1], [tribute1Str], [summoner], [0]);
+
+    // hero1 ragequits
+    await squad0.rageQuitWithTokens([DAI.address], { from: hero1 });
 
     // Verify hero1 has been removed
     assert.equal(await squad0.isMember(hero1), false, "Didn't remove hero1 from isMember");

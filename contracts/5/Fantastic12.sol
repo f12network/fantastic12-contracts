@@ -13,7 +13,7 @@ contract Fantastic12 {
 
   // Constants
   uint8   public constant MAX_MEMBERS = 12;
-  string  public constant VERSION = "0.1.2";
+  string  public constant VERSION = "0.1.3";
   uint256 internal constant PRECISION = 10 ** 18;
 
   // Instance variables
@@ -184,7 +184,19 @@ contract Fantastic12 {
     emit AddMember(_newMember, _tribute);
   }
 
-  function rageQuit(address[] memory _tokens) public onlyMember {
+  function rageQuit() public onlyMember {
+    // Give `msg.sender` their portion of the squad funds
+    uint256 withdrawAmount;
+    withdrawAmount = DAI.balanceOf(address(this)).div(memberCount);
+    DAI.safeTransfer(msg.sender, withdrawAmount);
+
+    // Remove `msg.sender` from squad
+    isMember[msg.sender] = false;
+    memberCount -= 1;
+    emit RageQuit(msg.sender);
+  }
+
+  function rageQuitWithTokens(address[] memory _tokens) public onlyMember {
     // Give `msg.sender` their portion of the squad funds
     uint256 withdrawAmount;
     for (uint256 i = 0; i < _tokens.length; i = i.add(1)) {
