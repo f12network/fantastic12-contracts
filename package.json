@@ -23,6 +23,7 @@
     "web3": "^1.2.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^2.3.0"
+    "@openzeppelin/contracts": "^2.3.0",
+    "bignumber.js": "^9.0.0"
   }
 }
