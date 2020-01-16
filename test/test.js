@@ -2,7 +2,7 @@ const Fantastic12 = artifacts.require("Fantastic12");
 const StandardBounties = artifacts.require("StandardBounties");
 const StandardBountiesV1 = artifacts.require("StandardBountiesV1");
 const MockERC20 = artifacts.require("MockERC20");
-
+const ShareToken = artifacts.require("ShareToken");
 const PRECISION = 1e18;
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
@@ -17,8 +17,10 @@ contract("Fantastic12", accounts => {
   let Bounties;
   let BountiesV1;
   let squad0;
+  let shareToken;
   let withdrawLimit;
   let consensusThreshold;
+  let defaultShareAmount;
 
   let approveAndSubmit = async function (func, argTypes, args, approvers, salts) {
     let funcSig = web3.eth.abi.encodeFunctionSignature(`${func}(${argTypes.join()},address[],bytes[],uint256[])`);
@@ -36,7 +38,7 @@ contract("Fantastic12", accounts => {
     return await squad0[func].apply(null, args);
   }
 
-  let addMembers = async function (newMembers, tributes, approvers, salts) {
+  let addMembers = async function (newMembers, tributes, shares, approvers, salts) {
     // Approve tribute for newMember
     for (let i in newMembers) {
       let newMember = newMembers[i];
@@ -45,13 +47,27 @@ contract("Fantastic12", accounts => {
     }
 
     let func = 'addMembers';
-    let argTypes = ['address[]', 'uint256[]'];
-    let args = [newMembers, tributes];
+    let argTypes = ['address[]', 'uint256[]', 'uint256[]'];
+    let args = [newMembers, tributes, shares];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
   let transferDAI = async function (dests, amounts, approvers, salts) {
     let func = 'transferDAI';
+    let argTypes = ['address[]', 'uint256[]'];
+    let args = [dests, amounts];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+
+  let transferTokens = async function (dests, amounts, tokens, approvers, salts) {
+    let func = 'transferTokens';
+    let argTypes = ['address[]', 'uint256[]', 'address[]'];
+    let args = [dests, amounts, tokens];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+
+  let mintShares = async function (dests, amounts, approvers, salts) {
+    let func = 'mintShares';
     let argTypes = ['address[]', 'uint256[]'];
     let args = [dests, amounts];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
@@ -68,13 +84,6 @@ contract("Fantastic12", accounts => {
     let func = 'setConsensusThreshold';
     let argTypes = ['uint256'];
     let args = [newThreshold];
-    return await approveAndSubmit(func, argTypes, args, approvers, salts);
-  };
-    
-  let transferTokens = async function (dests, amounts, tokens, approvers, salts) {
-    let func = 'transferTokens';
-    let argTypes = ['address[]', 'uint256[]', 'address[]'];
-    let args = [dests, amounts, tokens];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
@@ -155,9 +164,12 @@ contract("Fantastic12", accounts => {
     Bounties = await StandardBounties.new();
     BountiesV1 = await StandardBountiesV1.new();
     squad0 = await Fantastic12.new();
+    shareToken = await ShareToken.new();
     withdrawLimit = `${20 * PRECISION}`;
     consensusThreshold = `${0.75 * PRECISION}`;
-    await squad0.init(summoner, DAI.address, withdrawLimit, consensusThreshold);
+    defaultShareAmount = `${100 * PRECISION}`;
+    await shareToken.init(squad0.address, "Share Token", "SHARE", 18);
+    await squad0.init(summoner, DAI.address, shareToken.address, withdrawLimit, consensusThreshold, defaultShareAmount);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
@@ -188,7 +200,7 @@ contract("Fantastic12", accounts => {
   it("addMembers()", async function () {
     // Add hero1
     let tribute1 = `${10 * PRECISION}`;
-    await addMembers([hero1], [tribute1], [summoner], [1]);
+    await addMembers([hero1], [tribute1], [defaultShareAmount], [summoner], [1]);
 
     // Verify hero1 has been added
     assert(await squad0.isMember(hero1), "Didn't add hero1 to isMember");
@@ -198,7 +210,7 @@ contract("Fantastic12", accounts => {
     assert.equal(await DAI.balanceOf(squad0.address), tribute1, "Didn't transfer hero1's tribute");
 
     // Add hero2 to squad0
-    await addMembers([hero2], [0], [summoner, hero1], [0, 0]);
+    await addMembers([hero2], [0], [defaultShareAmount], [summoner, hero1], [0, 0]);
 
     // Verify hero2 has been added
     assert(await squad0.isMember(hero2), "Didn't add hero2 to isMember");
@@ -209,7 +221,7 @@ contract("Fantastic12", accounts => {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
     let tribute1Str = `${tribute1}`;
-    await addMembers([hero1], [tribute1Str], [summoner], [0]);
+    await addMembers([hero1], [tribute1Str], [defaultShareAmount], [summoner], [0]);
 
     // hero1 ragequits
     await squad0.rageQuit({ from: hero1 });
@@ -226,7 +238,7 @@ contract("Fantastic12", accounts => {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
     let tribute1Str = `${tribute1}`;
-    await addMembers([hero1], [tribute1Str], [summoner], [0]);
+    await addMembers([hero1], [tribute1Str], [defaultShareAmount], [summoner], [0]);
 
     // hero1 ragequits
     await squad0.rageQuitWithTokens([DAI.address], { from: hero1 });
@@ -279,6 +291,19 @@ contract("Fantastic12", accounts => {
     let actualHero2Amount = BigNumber(await web3.eth.getBalance(hero2)).minus(hero2InitialBalance);
     assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
     assert(actualHero2Amount.eq(hero2Amount), "hero2 received amount mismatch");
+  });
+
+  it("mintShares()", async function () {
+    // Mint shares to hero1 and hero2
+    let hero1Amount = `${30 * PRECISION}`;
+    let hero2Amount = `${40 * PRECISION}`;
+    await mintShares([hero1, hero2], [hero1Amount, hero2Amount], [summoner], [0]);
+
+    // Verify hero1 and hero2 received correct shares
+    let actualHero1Amount = +(await shareToken.balanceOf(hero1));
+    let actualHero2Amount = +(await shareToken.balanceOf(hero2));
+    assert.equal(hero1Amount, actualHero1Amount, "hero1 received amount mismatch");
+    assert.equal(hero2Amount, actualHero2Amount, "hero2 received amount mismatch");
   });
 
   it("setWithdrawLimit()", async function () {

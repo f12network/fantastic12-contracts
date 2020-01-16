@@ -7,16 +7,34 @@ contract Fantastic12Factory {
 
   event CreateSquad(address indexed summoner, address squad);
 
-  function createSquad(address _summoner, uint256 _withdrawLimit, uint256 _consensusThreshold)
+  function createSquad(
+    address _summoner,
+    uint256 _withdrawLimit,
+    uint256 _consensusThreshold,
+    string memory _shareTokenName,
+    string memory _shareTokenSymbol,
+    uint8 _shareTokenDecimals,
+    uint256 _summonerShareAmount
+  )
     public
     returns (Fantastic12 _squad)
   {
+    ShareToken shareToken = new ShareToken();
     _squad = new Fantastic12();
+
+    shareToken.init(
+      address(_squad),
+      _shareTokenName,
+      _shareTokenSymbol,
+      _shareTokenDecimals
+    );
     _squad.init(
       _summoner,
       DAI_ADDR,
+      address(shareToken),
       _withdrawLimit,
-      _consensusThreshold
+      _consensusThreshold,
+      _summonerShareAmount
     );
     emit CreateSquad(_summoner, address(_squad));
   }

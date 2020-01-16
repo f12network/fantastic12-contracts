@@ -20,8 +20,18 @@ async function main() {
   );
   console.log(`Deployed Fantastic12 at address ${squad.address}`);
 
+  const ShareToken = env.artifacts.require("ShareToken");
+  const share = await ShareToken.new();
+  await share.init(
+    accounts[0],
+    "",
+    "",
+    0
+  );
+  console.log(`Deployed ShareToken at address ${share.address}`);
+
   const PaidFantastic12Factory = env.artifacts.require("PaidFantastic12Factory");
-  const factory = await PaidFantastic12Factory.new(squad.address);
+  const factory = await PaidFantastic12Factory.new(squad.address, share.address);
   console.log(`Deployed PaidFantastic12Factory at address ${factory.address}`);
 }
 

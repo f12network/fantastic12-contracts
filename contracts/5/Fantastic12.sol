@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./standard_bounties/StandardBountiesWrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "./ShareToken.sol";
 
 contract Fantastic12 {
   using SafeMath for uint256;
@@ -13,7 +14,7 @@ contract Fantastic12 {
 
   // Constants
   uint8   public constant MAX_MEMBERS = 12;
-  string  public constant VERSION = "0.1.4";
+  string  public constant VERSION = "0.1.5";
   uint256 internal constant PRECISION = 10 ** 18;
 
   // Instance variables
@@ -21,6 +22,7 @@ contract Fantastic12 {
   mapping(address => mapping(uint256 => bool)) public hasUsedSalt; // Stores whether a salt has been used for a member
   uint8 public memberCount;
   IERC20 public DAI;
+  ShareToken public SHARE;
   address payable[] public issuersOrFulfillers;
   address[] public approvers;
   uint256 public withdrawLimit;
@@ -92,14 +94,17 @@ contract Fantastic12 {
   function init(
     address _summoner,
     address _DAI_ADDR,
+    address _SHARE_ADDR,
     uint256 _withdrawLimit,
-    uint256 _consensusThresholdPercentage
+    uint256 _consensusThresholdPercentage,
+    uint256 _summonerShareAmount
   ) public {
     require(! initialized, "Initialized");
     require(_consensusThresholdPercentage <= PRECISION, "Consensus threshold > 1");
     initialized = true;
     memberCount = 1;
     DAI = IERC20(_DAI_ADDR);
+    SHARE = ShareToken(_SHARE_ADDR);
     issuersOrFulfillers = new address payable[](1);
     issuersOrFulfillers[0] = address(this);
     approvers = new address[](1);
@@ -109,6 +114,8 @@ contract Fantastic12 {
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
+    // Mint share tokens for summoner
+    SHARE.mint(_summoner, _summonerShareAmount);
   }
 
   // Functions
@@ -145,6 +152,7 @@ contract Fantastic12 {
   function addMembers(
     address[] memory _newMembers,
     uint256[] memory _tributes,
+    uint256[] memory _shares,
     address[] memory _members,
     bytes[]   memory _signatures,
     uint256[] memory _salts
@@ -152,21 +160,22 @@ contract Fantastic12 {
     public
     withConsensus(
       this.addMembers.selector,
-      abi.encode(_newMembers, _tributes),
+      abi.encode(_newMembers, _tributes, _shares),
       _members,
       _signatures,
       _salts
     )
   {
-    require(_newMembers.length == _tributes.length, "_newMembers not same length as _tributes");
+    require(_newMembers.length == _tributes.length && _tributes.length == _shares.length, "_newMembers, _tributes, _shares not of the same length");
     for (uint256 i = 0; i < _newMembers.length; i = i.add(1)) {
-      _addMember(_newMembers[i], _tributes[i]);
+      _addMember(_newMembers[i], _tributes[i], _shares[i]);
     }
   }
 
   function _addMember(
     address _newMember,
-    uint256 _tribute
+    uint256 _tribute,
+    uint256 _share
   )
     internal
   {
@@ -181,38 +190,55 @@ contract Fantastic12 {
     isMember[_newMember] = true;
     memberCount += 1;
 
+    // Mint shares for `_newMember`
+    _mintShares(_newMember, _share);
+
     emit AddMember(_newMember, _tribute);
   }
 
-  function rageQuit() public onlyMember {
+  function rageQuit() public {
+    uint256 shareBalance = SHARE.balanceOf(msg.sender);
+    uint256 withdrawAmount = DAI.balanceOf(address(this)).mul(shareBalance).div(SHARE.totalSupply());
+
+    // Burn `msg.sender`'s share tokens
+    SHARE.burn(msg.sender, shareBalance);
+
     // Give `msg.sender` their portion of the squad funds
-    uint256 withdrawAmount;
-    withdrawAmount = DAI.balanceOf(address(this)).div(memberCount);
     DAI.safeTransfer(msg.sender, withdrawAmount);
 
     // Remove `msg.sender` from squad
-    isMember[msg.sender] = false;
-    memberCount -= 1;
+    if (isMember[msg.sender]) {
+      isMember[msg.sender] = false;
+      memberCount -= 1;
+    }
     emit RageQuit(msg.sender);
   }
 
-  function rageQuitWithTokens(address[] memory _tokens) public onlyMember {
+  function rageQuitWithTokens(address[] memory _tokens) public {
+    uint256 shareBalance = SHARE.balanceOf(msg.sender);
+    uint256 shareTotalSupply = SHARE.totalSupply();
+
+    // Burn `msg.sender`'s share tokens
+    SHARE.burn(msg.sender, shareBalance);
+
     // Give `msg.sender` their portion of the squad funds
     uint256 withdrawAmount;
     for (uint256 i = 0; i < _tokens.length; i = i.add(1)) {
       if (_tokens[i] == address(0)) {
-        withdrawAmount = address(this).balance.div(memberCount);
+        withdrawAmount = address(this).balance.mul(shareBalance).div(shareTotalSupply);
         msg.sender.transfer(withdrawAmount);
       } else {
         IERC20 token = IERC20(_tokens[i]);
-        withdrawAmount = token.balanceOf(address(this)).div(memberCount);
+        withdrawAmount = token.balanceOf(address(this)).mul(shareBalance).div(shareTotalSupply);
         token.safeTransfer(msg.sender, withdrawAmount);
       }
     }
 
     // Remove `msg.sender` from squad
-    isMember[msg.sender] = false;
-    memberCount -= 1;
+    if (isMember[msg.sender]) {
+      isMember[msg.sender] = false;
+      memberCount -= 1;
+    }
     emit RageQuit(msg.sender);
   }
 
@@ -271,7 +297,29 @@ contract Fantastic12 {
       }
     }
   }
-  
+
+  function mintShares(
+    address[] memory _dests,
+    uint256[] memory _amounts,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withConsensus(
+      this.mintShares.selector,
+      abi.encode(_dests, _amounts),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    require(_dests.length == _amounts.length, "_dests and _amounts not of same length");
+    for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
+      _mintShares(_dests[i], _amounts[i]);
+    }
+  }
+
   function setWithdrawLimit(
     uint256 _newLimit,
     address[] memory _members,
@@ -688,6 +736,13 @@ contract Fantastic12 {
     _applyWithdrawLimit(_amount);
     require(DAI.approve(_to, 0), "Failed to clear DAI approval");
     require(DAI.approve(_to, _amount), "Failed to approve DAI");
+  }
+
+  function _mintShares(address _to, uint256 _amount) internal {
+    // calculate how much the shares will be worth and apply the withdraw limit
+    uint256 sharesValue = _amount.mul(DAI.balanceOf(address(this))).div(_amount.add(SHARE.totalSupply()));
+    _applyWithdrawLimit(sharesValue);
+    require(SHARE.mint(_to, _amount), "Failed to mint shares");
   }
 
   function() external payable {}
