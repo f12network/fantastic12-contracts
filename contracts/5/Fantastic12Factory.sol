@@ -9,8 +9,6 @@ contract Fantastic12Factory {
 
   function createSquad(
     address _summoner,
-    uint256 _withdrawLimit,
-    uint256 _consensusThreshold,
     string memory _shareTokenName,
     string memory _shareTokenSymbol,
     uint8 _shareTokenDecimals,
@@ -32,8 +30,6 @@ contract Fantastic12Factory {
       _summoner,
       DAI_ADDR,
       address(shareToken),
-      _withdrawLimit,
-      _consensusThreshold,
       _summonerShareAmount
     );
     emit CreateSquad(_summoner, address(_squad));

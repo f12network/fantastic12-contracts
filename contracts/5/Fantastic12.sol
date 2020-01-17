@@ -13,23 +13,24 @@ contract Fantastic12 {
   using StandardBountiesWrapper for address;
 
   // Constants
-  uint8   public constant MAX_MEMBERS = 12;
   string  public constant VERSION = "0.1.5";
   uint256 internal constant PRECISION = 10 ** 18;
 
   // Instance variables
   mapping(address => bool) public isMember;
   mapping(address => mapping(uint256 => bool)) public hasUsedSalt; // Stores whether a salt has been used for a member
-  uint8 public memberCount;
+  uint256 public MAX_MEMBERS;
+  uint256 public memberCount;
   IERC20 public DAI;
   ShareToken public SHARE;
-  address payable[] public issuersOrFulfillers;
-  address[] public approvers;
   uint256 public withdrawLimit;
   uint256 public withdrawnToday;
   uint256 public lastWithdrawTimestamp;
   uint256 public consensusThresholdPercentage; // at least (consensusThresholdPercentage * memberCount / PRECISION) approvers are needed to execute an action
   bool public initialized;
+
+  address payable[] internal issuersOrFulfillers;
+  address[] internal approvers;
 
   // Modifiers
   modifier onlyMember {
@@ -95,13 +96,11 @@ contract Fantastic12 {
     address _summoner,
     address _DAI_ADDR,
     address _SHARE_ADDR,
-    uint256 _withdrawLimit,
-    uint256 _consensusThresholdPercentage,
     uint256 _summonerShareAmount
   ) public {
     require(! initialized, "Initialized");
-    require(_consensusThresholdPercentage <= PRECISION, "Consensus threshold > 1");
     initialized = true;
+    MAX_MEMBERS = 12;
     memberCount = 1;
     DAI = IERC20(_DAI_ADDR);
     SHARE = ShareToken(_SHARE_ADDR);
@@ -109,8 +108,8 @@ contract Fantastic12 {
     issuersOrFulfillers[0] = address(this);
     approvers = new address[](1);
     approvers[0] = address(this);
-    withdrawLimit = _withdrawLimit;
-    consensusThresholdPercentage = _consensusThresholdPercentage;
+    withdrawLimit = PRECISION.mul(1000); // default: 1000 DAI
+    consensusThresholdPercentage = PRECISION.mul(75).div(100); // default: 75%
 
     // Add `_summoner` as the first member
     isMember[_summoner] = true;
@@ -188,7 +187,7 @@ contract Fantastic12 {
 
     // Add `_newMember` to squad
     isMember[_newMember] = true;
-    memberCount += 1;
+    memberCount = memberCount.add(1);
 
     // Mint shares for `_newMember`
     _mintShares(_newMember, _share);
@@ -209,7 +208,7 @@ contract Fantastic12 {
     // Remove `msg.sender` from squad
     if (isMember[msg.sender]) {
       isMember[msg.sender] = false;
-      memberCount -= 1;
+      memberCount = memberCount.sub(1);
     }
     emit RageQuit(msg.sender);
   }
@@ -237,7 +236,7 @@ contract Fantastic12 {
     // Remove `msg.sender` from squad
     if (isMember[msg.sender]) {
       isMember[msg.sender] = false;
-      memberCount -= 1;
+      memberCount = memberCount.sub(1);
     }
     emit RageQuit(msg.sender);
   }
@@ -320,6 +319,10 @@ contract Fantastic12 {
     }
   }
 
+  /**
+    Parameter setters
+   */
+
   function setWithdrawLimit(
     uint256 _newLimit,
     address[] memory _members,
@@ -355,6 +358,25 @@ contract Fantastic12 {
   {
     require(_newThresholdPercentage <= PRECISION, "Consensus threshold > 1");
     consensusThresholdPercentage = _newThresholdPercentage;
+  }
+
+  function setMaxMembers(
+    uint256 _newMaxMembers,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withUnanimity(
+      this.setMaxMembers.selector,
+      abi.encode(_newMaxMembers),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    require(_newMaxMembers >= memberCount, "_newMaxMembers < memberCount");
+    MAX_MEMBERS = _newMaxMembers;
   }
 
   /**
@@ -670,9 +692,9 @@ contract Fantastic12 {
     return keccak256(abi.encodeWithSelector(_funcSelector, _funcParams, "|END|", _salt, address(this)));
   }
 
-  function consensusThreshold() public view returns (uint8) {
-    uint8 blockingThresholdMemberCount = uint8(PRECISION.sub(consensusThresholdPercentage).mul(memberCount).div(PRECISION));
-    return memberCount - blockingThresholdMemberCount;
+  function consensusThreshold() public view returns (uint256) {
+    uint256 blockingThresholdMemberCount = PRECISION.sub(consensusThresholdPercentage).mul(memberCount).div(PRECISION);
+    return memberCount.sub(blockingThresholdMemberCount);
   }
 
   function _consensusReached(

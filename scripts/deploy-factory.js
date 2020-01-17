@@ -9,13 +9,14 @@ async function main() {
   await env.run("compile");
   const accounts = await env.web3.eth.getAccounts();
   const DAI_ADDR = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+  const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
   const Fantastic12 = env.artifacts.require("Fantastic12");
   const squad = await Fantastic12.new();
   await squad.init(
     accounts[0],
     DAI_ADDR,
-    0,
+    ZERO_ADDR,
     0
   );
   console.log(`Deployed Fantastic12 at address ${squad.address}`);

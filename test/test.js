@@ -87,6 +87,13 @@ contract("Fantastic12", accounts => {
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
   };
 
+  let setMaxMembers = async function (newValue, approvers, salts) {
+    let func = 'setMaxMembers';
+    let argTypes = ['uint256'];
+    let args = [newValue];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+
   let postBounty = async function (data, deadline, reward, bounties, version, approvers, salts) {
     let func = 'postBounty';
     let argTypes = ['string', 'uint256', 'uint256', 'address', 'uint256'];
@@ -169,7 +176,7 @@ contract("Fantastic12", accounts => {
     consensusThreshold = `${0.75 * PRECISION}`;
     defaultShareAmount = `${100 * PRECISION}`;
     await shareToken.init(squad0.address, "Share Token", "SHARE", 18);
-    await squad0.init(summoner, DAI.address, shareToken.address, withdrawLimit, consensusThreshold, defaultShareAmount);
+    await squad0.init(summoner, DAI.address, shareToken.address, defaultShareAmount);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
@@ -318,6 +325,18 @@ contract("Fantastic12", accounts => {
     await setConsensusThreshold(newThreshold, [summoner], [0]);
     let actualNewThreshold = await squad0.consensusThresholdPercentage();
     assert.equal(newThreshold, actualNewThreshold.toString(), "new consensus threshold mismatch");
+  });
+
+  it("setMaxMembers()", async function () {
+    let newValue = 1;
+    await setMaxMembers(newValue, [summoner], [0]);
+    let actualNewValue = await squad0.MAX_MEMBERS();
+    assert.equal(newValue, actualNewValue.toString(), "new value mismatch");
+
+    try {
+      await addMembers([hero1], [0], [0], [summoner], [1]);
+      assert.fail('MAX_MEMBERS not limiting adding members');
+    } catch (error) {}
   });
 
   it("postBounty() V1", async function () {

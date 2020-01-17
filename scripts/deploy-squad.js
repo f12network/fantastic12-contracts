@@ -17,13 +17,11 @@ async function main() {
 
   // Deploy squad
   const PRECISION = 1e18;
-  const withdrawLimit = BigNumber(1000 * PRECISION);
-  const consensusThreshold = BigNumber(0.75 * PRECISION);
   const shareTokenName = "Fantastic12 Share Token";
   const shareTokenSymbol = "SHARE";
   const shareTokenDecimals = 18;
   const summonerShareAmount = BigNumber(100 * PRECISION);
-  const result = await factory.createSquad(accounts[0], withdrawLimit, consensusThreshold,
+  const result = await factory.createSquad(accounts[0],
     shareTokenName, shareTokenSymbol, shareTokenDecimals, summonerShareAmount);
   const squadAddress = result.logs[0].args.squad;
   console.log(`Deployed Fantastic12 squad at address ${squadAddress}`);

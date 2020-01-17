@@ -21,8 +21,6 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
 
   function createSquad(
     address _summoner,
-    uint256 _withdrawLimit,
-    uint256 _consensusThreshold,
     string memory _shareTokenName,
     string memory _shareTokenSymbol,
     uint8 _shareTokenDecimals,
@@ -51,8 +49,6 @@ contract PaidFantastic12Factory is Ownable, CloneFactory {
       _summoner,
       DAI_ADDR,
       address(shareToken),
-      _withdrawLimit,
-      _consensusThreshold,
       _summonerShareAmount
     );
     emit CreateSquad(_summoner, address(_squad));
