@@ -301,10 +301,13 @@ contract("Fantastic12", accounts => {
   });
 
   it("mintShares()", async function () {
+    // add hero1 and hero2 to squad
+    await addMembers([hero1, hero2], [0, 0], [0, 0], [summoner], [0]);
+
     // Mint shares to hero1 and hero2
     let hero1Amount = `${30 * PRECISION}`;
     let hero2Amount = `${40 * PRECISION}`;
-    await mintShares([hero1, hero2], [hero1Amount, hero2Amount], [summoner], [0]);
+    await mintShares([hero1, hero2], [hero1Amount, hero2Amount], [summoner, hero1, hero2], [1, 1, 1]);
 
     // Verify hero1 and hero2 received correct shares
     let actualHero1Amount = +(await shareToken.balanceOf(hero1));

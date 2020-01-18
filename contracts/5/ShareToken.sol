@@ -1,9 +1,11 @@
 pragma solidity 0.5.16;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./ERC20/ERC20NonTransferrable.sol";
 import "@openzeppelin/contracts/ownership/Ownable.sol";
 
-contract ShareToken is Ownable, ERC20 {
+contract ShareToken is Ownable, ERC20NonTransferrable {
+    using SafeMath for uint256;
+
     bool public initialized;
     string public name;
     string public symbol;

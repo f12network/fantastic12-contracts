@@ -206,10 +206,9 @@ contract Fantastic12 {
     DAI.safeTransfer(msg.sender, withdrawAmount);
 
     // Remove `msg.sender` from squad
-    if (isMember[msg.sender]) {
-      isMember[msg.sender] = false;
-      memberCount = memberCount.sub(1);
-    }
+    isMember[msg.sender] = false;
+    memberCount = memberCount.sub(1);
+
     emit RageQuit(msg.sender);
   }
 
@@ -234,10 +233,9 @@ contract Fantastic12 {
     }
 
     // Remove `msg.sender` from squad
-    if (isMember[msg.sender]) {
-      isMember[msg.sender] = false;
-      memberCount = memberCount.sub(1);
-    }
+    isMember[msg.sender] = false;
+    memberCount = memberCount.sub(1);
+
     emit RageQuit(msg.sender);
   }
 
@@ -761,6 +759,9 @@ contract Fantastic12 {
   }
 
   function _mintShares(address _to, uint256 _amount) internal {
+    // can only give shares to squad members
+    require(isMember[_to], "Shares minted for non-member");
+
     // calculate how much the shares will be worth and apply the withdraw limit
     uint256 sharesValue = _amount.mul(DAI.balanceOf(address(this))).div(_amount.add(SHARE.totalSupply()));
     _applyWithdrawLimit(sharesValue);
