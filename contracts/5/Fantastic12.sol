@@ -207,7 +207,9 @@ contract Fantastic12 {
     SHARE.burn(msg.sender, shareBalance);
 
     // Give `msg.sender` their portion of the squad funds
-    _transferToken(address(DAI), msg.sender, withdrawAmount);
+    uint256 fee = FEE_MODEL.getFee(memberCount, withdrawAmount);
+    DAI.safeTransfer(msg.sender, withdrawAmount.sub(fee));
+    DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
 
     // Remove `msg.sender` from squad
     isMember[msg.sender] = false;
@@ -225,14 +227,32 @@ contract Fantastic12 {
 
     // Give `msg.sender` their portion of the squad funds
     uint256 withdrawAmount;
+    uint256 fee;
     for (uint256 i = 0; i < _tokens.length; i = i.add(1)) {
       if (_tokens[i] == address(0)) {
+        // Ether
         withdrawAmount = address(this).balance.mul(shareBalance).div(shareTotalSupply);
+        if (withdrawAmount == 0) break;
+        fee = FEE_MODEL.getFee(memberCount, withdrawAmount);
+        if (fee <= withdrawAmount) {
+          msg.sender.transfer(withdrawAmount.sub(fee));
+          FEE_MODEL.beneficiary().transfer(fee);
+        } else {
+          msg.sender.transfer(withdrawAmount);
+        }
       } else {
+        // ERC20 token
         IERC20 token = IERC20(_tokens[i]);
         withdrawAmount = token.balanceOf(address(this)).mul(shareBalance).div(shareTotalSupply);
+        if (withdrawAmount == 0) break;
+        fee = FEE_MODEL.getFee(memberCount, withdrawAmount);
+        if (fee <= withdrawAmount) {
+          token.safeTransfer(msg.sender, withdrawAmount.sub(fee));
+          token.safeTransfer(FEE_MODEL.beneficiary(), fee);
+        } else {
+          token.safeTransfer(msg.sender, withdrawAmount);
+        }
       }
-      _transferToken(_tokens[i], msg.sender, withdrawAmount);
     }
 
     // Remove `msg.sender` from squad
@@ -748,47 +768,33 @@ contract Fantastic12 {
   }
 
   function _transferDAI(address _to, uint256 _amount) internal {
+    if (_amount == 0) return;
     _applyWithdrawLimit(_amount);
     uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
-    if (fee <= _amount) {
-      DAI.safeTransfer(_to, _amount.sub(fee));
-      DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
-    } else {
-      DAI.safeTransfer(_to, _amount);
-    }
+    DAI.safeTransfer(_to, _amount);
+    DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
   }
 
   function _approveDAI(address _to, uint256 _amount) internal {
+    if (_amount == 0) return;
     _applyWithdrawLimit(_amount);
     uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
-    if (fee <= _amount) {
-      DAI.safeApprove(_to, 0);
-      DAI.safeApprove(_to, _amount.sub(fee));
-      DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
-    } else {
-      DAI.safeApprove(_to, 0);
-      DAI.safeApprove(_to, _amount);
-    }
+    DAI.safeApprove(_to, 0);
+    DAI.safeApprove(_to, _amount);
+    DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
   }
 
   function _transferToken(address _token, address payable _to, uint256 _amount) internal {
+    if (_amount == 0) return;
     uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
     if (_token == address(0)) {
       // Ether
-      if (fee <= _amount) {
-        _to.transfer(_amount.sub(fee));
-        FEE_MODEL.beneficiary().transfer(fee);
-      } else {
-        _to.transfer(_amount);
-      }
+      _to.transfer(_amount);
+      FEE_MODEL.beneficiary().transfer(fee);
     } else {
       IERC20 token = IERC20(_token);
-      if (fee <= _amount) {
-        token.safeTransfer(_to, _amount.sub(fee));
-        token.safeTransfer(FEE_MODEL.beneficiary(), fee);
-      } else {
-        token.safeTransfer(_to, _amount);
-      }
+      token.safeTransfer(_to, _amount);
+      token.safeTransfer(FEE_MODEL.beneficiary(), fee);
     }
   }
 

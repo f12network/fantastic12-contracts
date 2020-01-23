@@ -14,7 +14,7 @@ contract FeeModel is Ownable {
     uint256 feePercentage;
 
     if (_memberCount <= 4) {
-      feePercentage = _percent(0); // 1% for 1-4 members
+      feePercentage = _percent(1); // 1% for 1-4 members
     } else if (_memberCount <= 12) {
       feePercentage = _percent(3); // 3% for 5-12 members
     } else {
