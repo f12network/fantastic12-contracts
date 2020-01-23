@@ -792,24 +792,6 @@ contract Fantastic12 {
     }
   }
 
-  function _approveToken(address _token, address _to, uint256 _amount) internal {
-    uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
-    require(_token != address(0), "Can't approve Ether");
-    IERC20 token = IERC20(_token);
-    if (fee <= _amount) {
-      if (token.allowance(address(this), _to) > 0) {
-        token.safeApprove(_to, 0);
-      }
-      token.safeApprove(_to, _amount.sub(fee));
-      token.safeTransfer(FEE_MODEL.beneficiary(), fee);
-    } else {
-      if (token.allowance(address(this), _to) > 0) {
-        token.safeApprove(_to, 0);
-      }
-      token.safeApprove(_to, _amount);
-    }
-  }
-
   function _mintShares(address _to, uint256 _amount) internal {
     // can only give shares to squad members
     require(isMember[_to], "Shares minted for non-member");
