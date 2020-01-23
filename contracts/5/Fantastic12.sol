@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./standard_bounties/StandardBountiesWrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "./ShareToken.sol";
+import "./FeeModel.sol";
 
 contract Fantastic12 {
   using SafeMath for uint256;
@@ -19,10 +20,11 @@ contract Fantastic12 {
   // Instance variables
   mapping(address => bool) public isMember;
   mapping(address => mapping(uint256 => bool)) public hasUsedSalt; // Stores whether a salt has been used for a member
-  uint256 public MAX_MEMBERS;
-  uint256 public memberCount;
   IERC20 public DAI;
   ShareToken public SHARE;
+  FeeModel public FEE_MODEL;
+  uint256 public MAX_MEMBERS;
+  uint256 public memberCount;
   uint256 public withdrawLimit;
   uint256 public withdrawnToday;
   uint256 public lastWithdrawTimestamp;
@@ -96,6 +98,7 @@ contract Fantastic12 {
     address _summoner,
     address _DAI_ADDR,
     address _SHARE_ADDR,
+    address _FEE_MODEL_ADDR,
     uint256 _summonerShareAmount
   ) public {
     require(! initialized, "Initialized");
@@ -104,6 +107,7 @@ contract Fantastic12 {
     memberCount = 1;
     DAI = IERC20(_DAI_ADDR);
     SHARE = ShareToken(_SHARE_ADDR);
+    FEE_MODEL = FeeModel(_FEE_MODEL_ADDR);
     issuersOrFulfillers = new address payable[](1);
     issuersOrFulfillers[0] = address(this);
     approvers = new address[](1);
@@ -203,7 +207,7 @@ contract Fantastic12 {
     SHARE.burn(msg.sender, shareBalance);
 
     // Give `msg.sender` their portion of the squad funds
-    DAI.safeTransfer(msg.sender, withdrawAmount);
+    _transferToken(address(DAI), msg.sender, withdrawAmount);
 
     // Remove `msg.sender` from squad
     isMember[msg.sender] = false;
@@ -224,12 +228,11 @@ contract Fantastic12 {
     for (uint256 i = 0; i < _tokens.length; i = i.add(1)) {
       if (_tokens[i] == address(0)) {
         withdrawAmount = address(this).balance.mul(shareBalance).div(shareTotalSupply);
-        msg.sender.transfer(withdrawAmount);
       } else {
         IERC20 token = IERC20(_tokens[i]);
         withdrawAmount = token.balanceOf(address(this)).mul(shareBalance).div(shareTotalSupply);
-        token.safeTransfer(msg.sender, withdrawAmount);
       }
+      _transferToken(_tokens[i], msg.sender, withdrawAmount);
     }
 
     // Remove `msg.sender` from squad
@@ -284,13 +287,10 @@ contract Fantastic12 {
   {
     require(_dests.length == _amounts.length && _dests.length == _tokens.length, "_dests, _amounts, _tokens not of same length");
     for (uint256 i = 0; i < _dests.length; i = i.add(1)) {
-      if (_tokens[i] == address(0)) {
-        _dests[i].transfer(_amounts[i]);
-      } else if (_tokens[i] == address(DAI)) {
+      if (_tokens[i] == address(DAI)) {
         _transferDAI(_dests[i], _amounts[i]);
       } else {
-        IERC20 token = IERC20(_tokens[i]);
-        token.safeTransfer(_dests[i], _amounts[i]);
+        _transferToken(_tokens[i], _dests[i], _amounts[i]);
       }
     }
   }
@@ -749,13 +749,65 @@ contract Fantastic12 {
 
   function _transferDAI(address _to, uint256 _amount) internal {
     _applyWithdrawLimit(_amount);
-    require(DAI.transfer(_to, _amount), "Failed DAI transfer");
+    uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
+    if (fee <= _amount) {
+      DAI.safeTransfer(_to, _amount.sub(fee));
+      DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
+    } else {
+      DAI.safeTransfer(_to, _amount);
+    }
   }
 
   function _approveDAI(address _to, uint256 _amount) internal {
     _applyWithdrawLimit(_amount);
-    require(DAI.approve(_to, 0), "Failed to clear DAI approval");
-    require(DAI.approve(_to, _amount), "Failed to approve DAI");
+    uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
+    if (fee <= _amount) {
+      DAI.safeApprove(_to, 0);
+      DAI.safeApprove(_to, _amount.sub(fee));
+      DAI.safeTransfer(FEE_MODEL.beneficiary(), fee);
+    } else {
+      DAI.safeApprove(_to, 0);
+      DAI.safeApprove(_to, _amount);
+    }
+  }
+
+  function _transferToken(address _token, address payable _to, uint256 _amount) internal {
+    uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
+    if (_token == address(0)) {
+      // Ether
+      if (fee <= _amount) {
+        _to.transfer(_amount.sub(fee));
+        FEE_MODEL.beneficiary().transfer(fee);
+      } else {
+        _to.transfer(_amount);
+      }
+    } else {
+      IERC20 token = IERC20(_token);
+      if (fee <= _amount) {
+        token.safeTransfer(_to, _amount.sub(fee));
+        token.safeTransfer(FEE_MODEL.beneficiary(), fee);
+      } else {
+        token.safeTransfer(_to, _amount);
+      }
+    }
+  }
+
+  function _approveToken(address _token, address _to, uint256 _amount) internal {
+    uint256 fee = FEE_MODEL.getFee(memberCount, _amount);
+    require(_token != address(0), "Can't approve Ether");
+    IERC20 token = IERC20(_token);
+    if (fee <= _amount) {
+      if (token.allowance(address(this), _to) > 0) {
+        token.safeApprove(_to, 0);
+      }
+      token.safeApprove(_to, _amount.sub(fee));
+      token.safeTransfer(FEE_MODEL.beneficiary(), fee);
+    } else {
+      if (token.allowance(address(this), _to) > 0) {
+        token.safeApprove(_to, 0);
+      }
+      token.safeApprove(_to, _amount);
+    }
   }
 
   function _mintShares(address _to, uint256 _amount) internal {

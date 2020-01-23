@@ -31,8 +31,11 @@ async function main() {
   );
   console.log(`Deployed ShareToken at address ${share.address}`);
 
+  const FeeModel = env.artifacts.require("FeeModel");
+  const fee = await FeeModel.new();
+
   const PaidFantastic12Factory = env.artifacts.require("PaidFantastic12Factory");
-  const factory = await PaidFantastic12Factory.new(squad.address, share.address);
+  const factory = await PaidFantastic12Factory.new(squad.address, share.address, fee.address);
   console.log(`Deployed PaidFantastic12Factory at address ${factory.address}`);
 }
 

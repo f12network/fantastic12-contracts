@@ -3,6 +3,7 @@ const StandardBounties = artifacts.require("StandardBounties");
 const StandardBountiesV1 = artifacts.require("StandardBountiesV1");
 const MockERC20 = artifacts.require("MockERC20");
 const ShareToken = artifacts.require("ShareToken");
+const FeeModel = artifacts.require("FeeModel");
 const PRECISION = 1e18;
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
@@ -18,6 +19,7 @@ contract("Fantastic12", accounts => {
   let BountiesV1;
   let squad0;
   let shareToken;
+  let feeModel;
   let withdrawLimit;
   let consensusThreshold;
   let defaultShareAmount;
@@ -172,11 +174,12 @@ contract("Fantastic12", accounts => {
     BountiesV1 = await StandardBountiesV1.new();
     squad0 = await Fantastic12.new();
     shareToken = await ShareToken.new();
+    feeModel = await FeeModel.new();
     withdrawLimit = `${20 * PRECISION}`;
     consensusThreshold = `${0.75 * PRECISION}`;
     defaultShareAmount = `${100 * PRECISION}`;
     await shareToken.init(squad0.address, "Share Token", "SHARE", 18);
-    await squad0.init(summoner, DAI.address, shareToken.address, defaultShareAmount);
+    await squad0.init(summoner, DAI.address, shareToken.address, feeModel.address, defaultShareAmount);
 
     // Mint DAI for accounts
     const mintAmount = `${100 * PRECISION}`;
