@@ -1,6 +1,6 @@
 {
   "name": "fantastic12-contracts",
-  "version": "0.0.1",
+  "version": "0.1.5",
   "description": "Ethereum smart contracts for Fantastic12",
   "main": "index.js",
   "scripts": {
