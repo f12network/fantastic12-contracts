@@ -51,7 +51,7 @@ contract("Fantastic12", accounts => {
     return await squad0[func].apply(null, args);
   }
 
-  let addMembers = async function (newMembers, tributes, shares, approvers, salts) {
+  let addMembers = async function (newMembers, tributes, approvers, salts) {
     // Approve tribute for newMember
     for (let i in newMembers) {
       let newMember = newMembers[i];
@@ -60,6 +60,20 @@ contract("Fantastic12", accounts => {
     }
 
     let func = 'addMembers';
+    let argTypes = ['address[]', 'uint256[]'];
+    let args = [newMembers, tributes];
+    return await approveAndSubmit(func, argTypes, args, approvers, salts);
+  };
+
+  let addMembersWithShares = async function (newMembers, tributes, shares, approvers, salts) {
+    // Approve tribute for newMember
+    for (let i in newMembers) {
+      let newMember = newMembers[i];
+      let tribute = tributes[i];
+      await DAI.approve(squad0.address, num2str(tribute), { from: newMember });
+    }
+
+    let func = 'addMembersWithShares';
     let argTypes = ['address[]', 'uint256[]', 'uint256[]'];
     let args = [newMembers, tributes, shares];
     return await approveAndSubmit(func, argTypes, args, approvers, salts);
@@ -221,7 +235,7 @@ contract("Fantastic12", accounts => {
   it("addMembers()", async function () {
     // Add hero1
     let tribute1 = 10 * PRECISION;
-    await addMembers([hero1], [tribute1], [defaultShareAmount], [summoner], [1]);
+    await addMembers([hero1], [tribute1], [summoner], [1]);
 
     // Verify hero1 has been added
     assert(await squad0.isMember(hero1), "Didn't add hero1 to isMember");
@@ -231,7 +245,26 @@ contract("Fantastic12", accounts => {
     assert.equal(await DAI.balanceOf(squad0.address), tribute1, "Didn't transfer hero1's tribute");
 
     // Add hero2 to squad0
-    await addMembers([hero2], [0], [defaultShareAmount], [summoner, hero1], [0, 0]);
+    await addMembers([hero2], [0], [summoner, hero1], [0, 0]);
+
+    // Verify hero2 has been added
+    assert(await squad0.isMember(hero2), "Didn't add hero2 to isMember");
+    assert.equal(await squad0.memberCount(), 3, "Didn't add hero2 to memberCount");
+  });
+  it("addMembersWithShares()", async function () {
+    // Add hero1
+    let tribute1 = 10 * PRECISION;
+    await addMembersWithShares([hero1], [tribute1], [defaultShareAmount], [summoner], [1]);
+
+    // Verify hero1 has been added
+    assert(await squad0.isMember(hero1), "Didn't add hero1 to isMember");
+    assert.equal(await squad0.memberCount(), 2, "Didn't add hero1 to memberCount");
+
+    // Verify tribute has been transferred
+    assert.equal(await DAI.balanceOf(squad0.address), tribute1, "Didn't transfer hero1's tribute");
+
+    // Add hero2 to squad0
+    await addMembersWithShares([hero2], [0], [defaultShareAmount], [summoner, hero1], [0, 0]);
 
     // Verify hero2 has been added
     assert(await squad0.isMember(hero2), "Didn't add hero2 to isMember");
@@ -241,7 +274,7 @@ contract("Fantastic12", accounts => {
   it("rageQuit()", async function () {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
-    await addMembers([hero1], [tribute1], [defaultShareAmount], [summoner], [0]);
+    await addMembersWithShares([hero1], [tribute1], [defaultShareAmount], [summoner], [0]);
 
     // hero1 ragequits
     await squad0.rageQuit({ from: hero1 });
@@ -257,7 +290,7 @@ contract("Fantastic12", accounts => {
   it("rageQuitWithTokens()", async function () {
     // Add hero1 to squad0
     let tribute1 = 10 * PRECISION;
-    await addMembers([hero1], [tribute1], [defaultShareAmount], [summoner], [0]);
+    await addMembersWithShares([hero1], [tribute1], [defaultShareAmount], [summoner], [0]);
 
     // hero1 ragequits
     await squad0.rageQuitWithTokens([DAI.address], { from: hero1 });
@@ -312,7 +345,7 @@ contract("Fantastic12", accounts => {
 
   it("mintShares()", async function () {
     // add hero1 and hero2 to squad
-    await addMembers([hero1, hero2], [0, 0], [0, 0], [summoner], [0]);
+    await addMembersWithShares([hero1, hero2], [0, 0], [0, 0], [summoner], [0]);
 
     // Mint shares to hero1 and hero2
     let hero1Amount = 30 * PRECISION;
@@ -347,7 +380,7 @@ contract("Fantastic12", accounts => {
     assert.equal(newValue, actualNewValue.toString(), "new value mismatch");
 
     try {
-      await addMembers([hero1], [0], [0], [summoner], [1]);
+      await addMembersWithShares([hero1], [0], [0], [summoner], [1]);
       assert.fail('MAX_MEMBERS not limiting adding members');
     } catch (error) {}
   });

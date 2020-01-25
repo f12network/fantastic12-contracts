@@ -155,7 +155,6 @@ contract Fantastic12 {
   function addMembers(
     address[] memory _newMembers,
     uint256[] memory _tributes,
-    uint256[] memory _shares,
     address[] memory _members,
     bytes[]   memory _signatures,
     uint256[] memory _salts
@@ -163,6 +162,29 @@ contract Fantastic12 {
     public
     withConsensus(
       this.addMembers.selector,
+      abi.encode(_newMembers, _tributes),
+      _members,
+      _signatures,
+      _salts
+    )
+  {
+    require(_newMembers.length == _tributes.length, "_newMembers, _tributes not of the same length");
+    for (uint256 i = 0; i < _newMembers.length; i = i.add(1)) {
+      _addMember(_newMembers[i], _tributes[i], 0);
+    }
+  }
+
+  function addMembersWithShares(
+    address[] memory _newMembers,
+    uint256[] memory _tributes,
+    uint256[] memory _shares,
+    address[] memory _members,
+    bytes[]   memory _signatures,
+    uint256[] memory _salts
+  )
+    public
+    withConsensus(
+      this.addMembersWithShares.selector,
       abi.encode(_newMembers, _tributes, _shares),
       _members,
       _signatures,
