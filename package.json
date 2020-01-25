@@ -15,10 +15,10 @@
   "author": "Bacon Labs",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
-    "@nomiclabs/buidler": "^1.0.2",
-    "@nomiclabs/buidler-etherscan": "^1.0.2",
-    "@nomiclabs/buidler-truffle5": "^1.0.2",
-    "@nomiclabs/buidler-web3": "^1.0.2",
+    "@nomiclabs/buidler": "^1.1.0",
+    "@nomiclabs/buidler-etherscan": "^1.1.0",
+    "@nomiclabs/buidler-truffle5": "^1.1.0",
+    "@nomiclabs/buidler-web3": "^1.1.0",
     "mocha": "^6.2.2",
     "web3": "^1.2.2"
   },
