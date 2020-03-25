@@ -11,17 +11,35 @@ async function main() {
   const DAI_ADDR = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
 
   const Fantastic12 = env.artifacts.require("Fantastic12");
+  const ShareToken = env.artifacts.require("ShareToken");
+  const FeeModel = env.artifacts.require("FeeModel");
+
   const squad = await Fantastic12.new();
+  console.log(`Deployed Fantastic12 at address ${squad.address}`);
+  const share = await ShareToken.new();
+  console.log(`Deployed ShareToken at address ${share.address}`);
+  const fee = await FeeModel.new();
+  console.log(`Deployed FeeModel at address ${fee.address}`);
+
+  await share.init(
+    squad.address,
+    "",
+    "",
+    0
+  );
+  console.log('Initialized ShareToken');
+
   await squad.init(
     accounts[0],
     DAI_ADDR,
-    0,
+    share.address,
+    fee.address,
     0
   );
-  console.log(`Deployed Fantastic12 at address ${squad.address}`);
+  console.log('Initialized Fantastic12');
 
   const PaidFantastic12Factory = env.artifacts.require("PaidFantastic12Factory");
-  const factory = await PaidFantastic12Factory.new(squad.address);
+  const factory = await PaidFantastic12Factory.new(squad.address, share.address, fee.address);
   console.log(`Deployed PaidFantastic12Factory at address ${factory.address}`);
 }
 
