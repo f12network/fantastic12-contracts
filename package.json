@@ -19,7 +19,7 @@
     "@nomiclabs/buidler-etherscan": "^1.1.0",
     "@nomiclabs/buidler-truffle5": "^1.1.0",
     "@nomiclabs/buidler-web3": "^1.1.0",
-    "mocha": "^6.2.2",
+    "mocha": "^10.2.0",
     "web3": "^1.2.2"
   },
   "dependencies": {
